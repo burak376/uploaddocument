@@ -1,0 +1,208 @@
+### Document Management API Test Collection
+
+### Variables
+@baseUrl = https://localhost:7001/api
+@token = your-jwt-token-here
+
+### 1. Login - SuperAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "superadmin",
+  "password": "12345"
+}
+
+### 2. Login - Company Admin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "bugibo_admin",
+  "password": "12345"
+}
+
+### 3. Login - User
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "burak",
+  "password": "12345"
+}
+
+### 4. Get All Companies (SuperAdmin only)
+GET {{baseUrl}}/companies
+Authorization: Bearer {{token}}
+
+### 5. Create Company (SuperAdmin only)
+POST {{baseUrl}}/companies
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Test Şirketi",
+  "taxNumber": "1111111111",
+  "address": "Test Adresi",
+  "phone": "0212 111 11 11",
+  "email": "test@test.com",
+  "isActive": true
+}
+
+### 6. Get Company by ID
+GET {{baseUrl}}/companies/1
+Authorization: Bearer {{token}}
+
+### 7. Update Company
+PUT {{baseUrl}}/companies/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Bugibo Yazılım Güncellendi",
+  "taxNumber": "1234567890",
+  "address": "İstanbul, Türkiye - Güncellendi",
+  "phone": "0212 123 45 67",
+  "email": "info@bugibo.com",
+  "isActive": true
+}
+
+### 8. Get All Users
+GET {{baseUrl}}/users
+Authorization: Bearer {{token}}
+
+### 9. Create User
+POST {{baseUrl}}/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "firstName": "Test",
+  "lastName": "User",
+  "email": "testuser@test.com",
+  "password": "123456",
+  "role": 3,
+  "companyId": 1,
+  "isActive": true
+}
+
+### 10. Get User by ID
+GET {{baseUrl}}/users/1
+Authorization: Bearer {{token}}
+
+### 11. Update User
+PUT {{baseUrl}}/users/3
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "username": "burak",
+  "firstName": "Burak",
+  "lastName": "Kullanıcı Güncellendi",
+  "email": "burak@bugibo.com",
+  "role": 3,
+  "companyId": 1,
+  "isActive": true
+}
+
+### 12. Change Password
+POST {{baseUrl}}/users/3/change-password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "currentPassword": "12345",
+  "newPassword": "123456"
+}
+
+### 13. Get All Document Types
+GET {{baseUrl}}/documenttypes
+Authorization: Bearer {{token}}
+
+### 14. Create Document Type
+POST {{baseUrl}}/documenttypes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Test Belge Türü",
+  "description": "Test amaçlı belge türü",
+  "allowedExtensions": [".pdf", ".docx"],
+  "maxFileSize": 10,
+  "companyId": 1,
+  "isActive": true
+}
+
+### 15. Get Document Type by ID
+GET {{baseUrl}}/documenttypes/1
+Authorization: Bearer {{token}}
+
+### 16. Update Document Type
+PUT {{baseUrl}}/documenttypes/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "TC Kimlik Güncellendi",
+  "description": "TC Kimlik belgesi - güncellendi",
+  "allowedExtensions": [".pdf", ".jpg", ".png", ".jpeg"],
+  "maxFileSize": 10,
+  "isActive": true
+}
+
+### 17. Get All Documents
+GET {{baseUrl}}/documents
+Authorization: Bearer {{token}}
+
+### 18. Upload Document (multipart/form-data)
+POST {{baseUrl}}/documents/upload
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="test.pdf"
+Content-Type: application/pdf
+
+< ./test-files/test.pdf
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="documentTypeId"
+
+1
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 19. Get Document by ID
+GET {{baseUrl}}/documents/1
+Authorization: Bearer {{token}}
+
+### 20. Download Document
+GET {{baseUrl}}/documents/1/download
+Authorization: Bearer {{token}}
+
+### 21. Search Documents
+POST {{baseUrl}}/documents/search
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "searchTerm": "test",
+  "documentTypeId": 1,
+  "page": 1,
+  "pageSize": 10
+}
+
+### 22. Delete Document
+DELETE {{baseUrl}}/documents/1
+Authorization: Bearer {{token}}
+
+### 23. Delete User
+DELETE {{baseUrl}}/users/4
+Authorization: Bearer {{token}}
+
+### 24. Delete Document Type
+DELETE {{baseUrl}}/documenttypes/4
+Authorization: Bearer {{token}}
+
+### 25. Delete Company
+DELETE {{baseUrl}}/companies/2
+Authorization: Bearer {{token}}
