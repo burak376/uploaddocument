@@ -1,14 +1,17 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { authService } from '../services/authService';
+import toast from 'react-hot-toast';
 
 interface User {
-  id: string;
+  id: number;
   username: string;
   firstName: string;
   lastName: string;
   email: string;
   role: 'SuperAdmin' | 'CompanyAdmin' | 'User';
-  companyId?: string;
+  companyId?: number;
   companyName?: string;
+  isActive: boolean;
 }
 
 interface AuthContextType {
@@ -21,46 +24,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock kullanıcı verileri
-const mockUsers: User[] = [
-  {
-    id: '1',
-    username: 'superadmin',
-    firstName: 'Super',
-    lastName: 'Admin',
-    email: 'admin@system.com',
-    role: 'SuperAdmin'
-  },
-  {
-    id: '2',
-    username: 'bugibo_admin',
-    firstName: 'Bugibo',
-    lastName: 'Admin',
-    email: 'admin@bugibo.com',
-    role: 'CompanyAdmin',
-    companyId: '1',
-    companyName: 'Bugibo Yazılım'
-  },
-  {
-    id: '3',
-    username: 'burak',
-    firstName: 'Burak',
-    lastName: 'Kullanıcı',
-    email: 'burak@bugibo.com',
-    role: 'User',
-    companyId: '1',
-    companyName: 'Bugibo Yazılım'
-  }
-];
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Sayfa yenilendiğinde oturum kontrolü
+    const savedToken = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
-    if (savedUser) {
+    if (savedToken && savedUser) {
       setUser(JSON.parse(savedUser));
     }
     setLoading(false);
@@ -69,22 +41,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (username: string, password: string): Promise<boolean> => {
     setLoading(true);
     
-    // Mock authentication - gerçek uygulamada API çağrısı olacak
-    const foundUser = mockUsers.find(u => u.username === username);
-    
-    if (foundUser && password === '12345') {
-      setUser(foundUser);
-      localStorage.setItem('user', JSON.stringify(foundUser));
+    try {
+      const response = await authService.login({ username, password });
+      
+      const userData: User = {
+        id: response.user.id,
+        username: response.user.username,
+        firstName: response.user.firstName,
+        lastName: response.user.lastName,
+        email: response.user.email,
+        role: response.user.role as 'SuperAdmin' | 'CompanyAdmin' | 'User',
+        companyId: response.user.companyId,
+        companyName: response.user.companyName,
+        isActive: response.user.isActive
+      };
+      
+      setUser(userData);
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify(userData));
       setLoading(false);
       return true;
+    } catch (error: any) {
+      console.error('Login error:', error);
+      toast.error(error.response?.data?.message || 'Giriş yapılamadı');
+      setLoading(false);
+      return false;
     }
-    
-    setLoading(false);
-    return false;
   };
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem('token');
     localStorage.removeItem('user');
   };
 

@@ -1,19 +1,39 @@
 import React, { useState } from 'react';
+import { useEffect } from 'react';
 import { Upload as UploadIcon, File, X, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
+import { documentTypeService } from '../services/documentTypeService';
+import { documentService } from '../services/documentService';
 import toast from 'react-hot-toast';
 
 const Upload: React.FC = () => {
   const { user } = useAuth();
-  const { documentTypes, addDocument } = useApp();
+  const { documentTypes, setDocumentTypes, addDocument } = useApp();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedDocumentType, setSelectedDocumentType] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const userDocumentTypes = user?.companyId 
-    ? documentTypes.filter(dt => dt.companyId === user.companyId)
-    : documentTypes;
+  useEffect(() => {
+    loadDocumentTypes();
+  }, []);
+
+  const loadDocumentTypes = async () => {
+    try {
+      setLoading(true);
+      const data = await documentTypeService.getAll();
+      setDocumentTypes(data);
+    } catch (error) {
+      toast.error('Belge türleri yüklenirken hata oluştu');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const userDocumentTypes = documentTypes.filter(dt => 
+    !dt.companyId || dt.companyId === user?.companyId
+  );
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -62,7 +82,7 @@ const Upload: React.FC = () => {
       return;
     }
 
-    const selectedType = userDocumentTypes.find(dt => dt.id === selectedDocumentType);
+    const selectedType = userDocumentTypes.find(dt => dt.id === parseInt(selectedDocumentType));
     if (!selectedType) {
       toast.error('Geçersiz belge türü');
       return;
@@ -80,26 +100,9 @@ const Upload: React.FC = () => {
     setIsUploading(true);
 
     try {
-      // Simüle edilmiş yükleme işlemi
       for (const file of selectedFiles) {
-        const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
-        const fileSizeMB = file.size / (1024 * 1024);
-        
-        const document = {
-          name: `${user?.username}_${selectedType.name.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}${fileExtension}`,
-          originalName: file.name,
-          fileSize: Number(fileSizeMB.toFixed(2)),
-          fileExtension,
-          documentTypeId: selectedType.id,
-          documentTypeName: selectedType.name,
-          uploadedById: user?.id || '',
-          uploadedByName: `${user?.firstName} ${user?.lastName}`,
-          uploadDate: new Date().toISOString(),
-          companyId: user?.companyId || '',
-          filePath: `/uploads/${user?.companyId}/${user?.username}/${selectedType.name.toLowerCase().replace(/\s+/g, '-')}/${new Date().getFullYear()}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${file.name}`
-        };
-
-        addDocument(document);
+        const uploadedDocument = await documentService.upload(file, selectedType.id);
+        addDocument(uploadedDocument);
       }
 
       toast.success(`${selectedFiles.length} dosya başarıyla yüklendi`);

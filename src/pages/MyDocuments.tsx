@@ -1,14 +1,33 @@
 import React, { useState } from 'react';
+import { useEffect } from 'react';
 import { FileText, Download, Trash2, Eye, Calendar, User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
+import { documentService } from '../services/documentService';
 import toast from 'react-hot-toast';
 
 const MyDocuments: React.FC = () => {
   const { user } = useAuth();
-  const { documents, deleteDocument } = useApp();
+  const { documents, setDocuments, deleteDocument } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDocumentType, setSelectedDocumentType] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadDocuments();
+  }, []);
+
+  const loadDocuments = async () => {
+    try {
+      setLoading(true);
+      const data = await documentService.getAll();
+      setDocuments(data);
+    } catch (error) {
+      toast.error('Belgeler yüklenirken hata oluştu');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Kullanıcının belgelerini filtrele
   const myDocuments = documents.filter(doc => {
@@ -21,7 +40,7 @@ const MyDocuments: React.FC = () => {
     const matchesSearch = doc.originalName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          doc.documentTypeName.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesType = selectedDocumentType === '' || doc.documentTypeId === selectedDocumentType;
+    const matchesType = selectedDocumentType === '' || doc.documentTypeId === parseInt(selectedDocumentType);
     
     return matchesSearch && matchesType;
   });
@@ -46,21 +65,37 @@ const MyDocuments: React.FC = () => {
     return `${size} MB`;
   };
 
-  const handleDownload = (document: any) => {
-    // Gerçek uygulamada burada dosya indirme işlemi yapılacak
-    toast.success(`${document.originalName} indiriliyor...`);
+  const handleDownload = async (document: any) => {
+    try {
+      const blob = await documentService.download(document.id);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = document.originalName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success(`${document.originalName} indirildi`);
+    } catch (error) {
+      toast.error('Dosya indirilemedi');
+    }
   };
 
-  const handleDelete = (document: any) => {
+  const handleDelete = async (document: any) => {
     if (window.confirm(`${document.originalName} dosyasını silmek istediğinizden emin misiniz?`)) {
-      deleteDocument(document.id);
-      toast.success('Belge başarıyla silindi');
+      try {
+        await documentService.delete(document.id);
+        deleteDocument(document.id);
+        toast.success('Belge başarıyla silindi');
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || 'Silme işlemi başarısız');
+      }
     }
   };
 
   const handleView = (document: any) => {
-    // Gerçek uygulamada burada dosya görüntüleme işlemi yapılacak
-    toast.info(`${document.originalName} görüntüleniyor...`);
+    handleDownload(document);
   };
 
   return (

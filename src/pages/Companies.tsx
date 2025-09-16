@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
+import { useEffect } from 'react';
 import { Building2, Plus, Edit, Trash2, Users } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
+import { companyService, CreateCompanyRequest } from '../services/companyService';
 import Modal from '../components/Common/Modal';
 import toast from 'react-hot-toast';
 
 const Companies: React.FC = () => {
-  const { companies, addCompany, updateCompany, deleteCompany } = useApp();
+  const { companies, setCompanies, addCompany, updateCompany, deleteCompany } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     taxNumber: '',
@@ -16,6 +19,22 @@ const Companies: React.FC = () => {
     email: '',
     isActive: true
   });
+
+  useEffect(() => {
+    loadCompanies();
+  }, []);
+
+  const loadCompanies = async () => {
+    try {
+      setLoading(true);
+      const data = await companyService.getAll();
+      setCompanies(data);
+    } catch (error) {
+      toast.error('Firmalar yüklenirken hata oluştu');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleOpenModal = (company?: any) => {
     if (company) {
@@ -48,7 +67,7 @@ const Companies: React.FC = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name || !formData.taxNumber || !formData.email) {
@@ -56,21 +75,45 @@ const Companies: React.FC = () => {
       return;
     }
 
-    if (editingCompany) {
-      updateCompany(editingCompany.id, formData);
-      toast.success('Firma başarıyla güncellendi');
-    } else {
-      addCompany(formData);
-      toast.success('Firma başarıyla eklendi');
+    try {
+      setLoading(true);
+      const companyData: CreateCompanyRequest = {
+        name: formData.name,
+        taxNumber: formData.taxNumber,
+        address: formData.address,
+        phone: formData.phone,
+        email: formData.email,
+        isActive: formData.isActive
+      };
+
+      if (editingCompany) {
+        const updated = await companyService.update(editingCompany.id, companyData);
+        updateCompany(editingCompany.id, updated);
+        toast.success('Firma başarıyla güncellendi');
+      } else {
+        const created = await companyService.create(companyData);
+        addCompany(created);
+        toast.success('Firma başarıyla eklendi');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'İşlem başarısız');
     }
     
     handleCloseModal();
   };
 
-  const handleDelete = (company: any) => {
+  const handleDelete = async (company: any) => {
     if (window.confirm(`${company.name} firmasını silmek istediğinizden emin misiniz?`)) {
-      deleteCompany(company.id);
-      toast.success('Firma başarıyla silindi');
+      try {
+        setLoading(true);
+        await companyService.delete(company.id);
+        deleteCompany(company.id);
+        toast.success('Firma başarıyla silindi');
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || 'Silme işlemi başarısız');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 

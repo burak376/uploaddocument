@@ -1,4 +1,5 @@
 import React from 'react';
+import { useEffect } from 'react';
 import { 
   Users, 
   Building2, 
@@ -11,10 +12,34 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
+import { companyService } from '../services/companyService';
+import { documentService } from '../services/documentService';
+import { documentTypeService } from '../services/documentTypeService';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
-  const { companies, documents, documentTypes } = useApp();
+  const { companies, documents, documentTypes, setCompanies, setDocuments, setDocumentTypes } = useApp();
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      if (user?.role === 'SuperAdmin') {
+        const companiesData = await companyService.getAll();
+        setCompanies(companiesData);
+      }
+      
+      const documentsData = await documentService.getAll();
+      setDocuments(documentsData);
+      
+      const documentTypesData = await documentTypeService.getAll();
+      setDocumentTypes(documentTypesData);
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    }
+  };
 
   const userCompanyDocuments = user?.companyId 
     ? documents.filter(doc => doc.companyId === user.companyId)
