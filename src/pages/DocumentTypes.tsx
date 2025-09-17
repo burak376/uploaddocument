@@ -128,7 +128,7 @@ const DocumentTypes: React.FC = () => {
         description: formData.description,
         allowedExtensions: formData.allowedExtensions,
         maxFileSize: formData.maxFileSize,
-        companyId: user?.role === 'SuperAdmin' && formData.companyId ? parseInt(formData.companyId) : user?.companyId,
+        companyId: user?.role === 'SuperAdmin' && formData.companyId ? parseInt(formData.companyId) : (user?.companyId || null),
         isActive: true
       };
 
@@ -141,6 +141,12 @@ const DocumentTypes: React.FC = () => {
         addDocumentType(created);
         toast.success('Belge türü başarıyla eklendi');
       }
+    } catch (error: any) {
+      console.error('Document type operation error:', error);
+      toast.error(error.response?.data?.message || 'İşlem başarısız');
+    } finally {
+      setLoading(false);
+    }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'İşlem başarısız');
     }
