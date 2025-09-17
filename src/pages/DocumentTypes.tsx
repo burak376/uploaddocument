@@ -137,7 +137,9 @@ const DocumentTypes: React.FC = () => {
         updateDocumentType(editingDocumentType.id, updated);
         toast.success('Belge türü başarıyla güncellendi');
       } else {
+        console.log('Creating document type with data:', documentTypeData);
         const created = await documentTypeService.create(documentTypeData);
+        console.log('Document type created:', created);
         addDocumentType(created);
         toast.success('Belge türü başarıyla eklendi');
       }
