@@ -393,5 +393,32 @@ namespace DocumentManagementAPI.Controllers
                 return StatusCode(500, new { message = "An error occurred while changing the password" });
             }
         }
+
+        [HttpPost("{id}/admin-change-password")]
+        [Authorize(Roles = "SuperAdmin")]
+        public async Task<ActionResult> AdminChangePassword(int id, [FromBody] AdminChangePasswordDto adminChangePasswordDto)
+        {
+            try
+            {
+                var user = await _context.Users.FindAsync(id);
+                if (user == null)
+                {
+                    return NotFound(new { message = "User not found" });
+                }
+
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminChangePasswordDto.NewPassword);
+                user.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Password changed by admin for user {UserId}", id);
+                return Ok(new { message = "Password changed successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error changing password by admin for user {UserId}", id);
+                return StatusCode(500, new { message = "An error occurred while changing the password" });
+            }
+        }
     }
 }

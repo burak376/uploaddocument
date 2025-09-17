@@ -38,6 +38,10 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
+export interface AdminChangePasswordRequest {
+  newPassword: string;
+}
+
 export const userService = {
   async getAll(): Promise<User[]> {
     const response = await api.get('/users');
@@ -65,5 +69,9 @@ export const userService = {
 
   async changePassword(id: number, request: ChangePasswordRequest): Promise<void> {
     await api.post(`/users/${id}/change-password`, request);
+  },
+
+  async adminChangePassword(id: number, request: AdminChangePasswordRequest): Promise<void> {
+    await api.post(`/users/${id}/admin-change-password`, request);
   },
 };

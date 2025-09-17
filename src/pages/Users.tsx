@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users as UsersIcon, Plus, Edit, Trash2, User } from 'lucide-react';
+import { Users as UsersIcon, Plus, Edit, Trash2, User, Lock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
 import { userService } from '../services/userService';
@@ -26,6 +26,12 @@ const Users: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [passwordFormData, setPasswordFormData] = useState({
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [selectedUserForPassword, setSelectedUserForPassword] = useState<User | null>(null);
   const [formData, setFormData] = useState({
     username: '',
     firstName: '',
@@ -176,6 +182,57 @@ const Users: React.FC = () => {
     handleCloseModal();
   };
 
+  const handleOpenPasswordModal = (user: User) => {
+    setSelectedUserForPassword(user);
+    setPasswordFormData({
+      newPassword: '',
+      confirmPassword: ''
+    });
+    setIsPasswordModalOpen(true);
+  };
+
+  const handleClosePasswordModal = () => {
+    setIsPasswordModalOpen(false);
+    setSelectedUserForPassword(null);
+    setPasswordFormData({
+      newPassword: '',
+      confirmPassword: ''
+    });
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!passwordFormData.newPassword || !passwordFormData.confirmPassword) {
+      toast.error('Tüm alanları doldurun');
+      return;
+    }
+
+    if (passwordFormData.newPassword !== passwordFormData.confirmPassword) {
+      toast.error('Şifreler eşleşmiyor');
+      return;
+    }
+
+    if (passwordFormData.newPassword.length < 6) {
+      toast.error('Şifre en az 6 karakter olmalıdır');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // SuperAdmin için özel endpoint kullanacağız
+      await userService.adminChangePassword(selectedUserForPassword!.id, {
+        newPassword: passwordFormData.newPassword
+      });
+      toast.success('Şifre başarıyla değiştirildi');
+      handleClosePasswordModal();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Şifre değiştirme başarısız');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDelete = async (user: User) => {
     if (user.id === currentUser?.id.toString()) {
       toast.error('Kendi hesabınızı silemezsiniz');
@@ -313,6 +370,15 @@ const Users: React.FC = () => {
                         >
                           <Edit className="h-4 w-4" />
                         </button>
+                        {currentUser?.role === 'SuperAdmin' && (
+                          <button
+                            onClick={() => handleOpenPasswordModal(user)}
+                            className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                            title="Şifre Değiştir"
+                          >
+                            <Lock className="h-4 w-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDelete(user)}
                           className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
@@ -484,6 +550,68 @@ const Users: React.FC = () => {
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
             >
               {editingUser ? 'Güncelle' : 'Ekle'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Password Change Modal */}
+      <Modal
+        isOpen={isPasswordModalOpen}
+        onClose={handleClosePasswordModal}
+        title={`${selectedUserForPassword?.firstName} ${selectedUserForPassword?.lastName} - Şifre Değiştir`}
+        maxWidth="md"
+      >
+        <form onSubmit={handlePasswordSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Yeni Şifre *
+            </label>
+            <input
+              type="password"
+              value={passwordFormData.newPassword}
+              onChange={(e) => setPasswordFormData({ ...passwordFormData, newPassword: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Yeni şifreyi girin"
+              required
+              minLength={6}
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Yeni Şifre Tekrar *
+            </label>
+            <input
+              type="password"
+              value={passwordFormData.confirmPassword}
+              onChange={(e) => setPasswordFormData({ ...passwordFormData, confirmPassword: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Yeni şifreyi tekrar girin"
+              required
+              minLength={6}
+            />
+          </div>
+
+          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+            <p className="text-sm text-yellow-800">
+              <strong>Uyarı:</strong> Bu işlem kullanıcının şifresini kalıcı olarak değiştirecektir.
+            </p>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={handleClosePasswordModal}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+            >
+              İptal
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+            >
+              Şifreyi Değiştir
             </button>
           </div>
         </form>

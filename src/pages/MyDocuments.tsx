@@ -67,6 +67,7 @@ const MyDocuments: React.FC = () => {
 
   const handleDownload = async (document: any) => {
     try {
+      setLoading(true);
       const blob = await documentService.download(document.id);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -79,6 +80,8 @@ const MyDocuments: React.FC = () => {
       toast.success(`${document.originalName} indirildi`);
     } catch (error) {
       toast.error('Dosya indirilemedi');
+    } finally {
+      setLoading(false);
     }
   };
 

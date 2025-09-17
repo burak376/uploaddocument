@@ -70,4 +70,11 @@ namespace DocumentManagementAPI.DTOs
         [StringLength(100, MinimumLength = 6)]
         public string NewPassword { get; set; } = string.Empty;
     }
+
+    public class AdminChangePasswordDto
+    {
+        [Required]
+        [StringLength(100, MinimumLength = 6)]
+        public string NewPassword { get; set; } = string.Empty;
+    }
 }

@@ -116,6 +116,15 @@ Content-Type: application/json
   "newPassword": "123456"
 }
 
+### 12b. Admin Change Password (SuperAdmin only)
+POST {{baseUrl}}/users/3/admin-change-password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "newPassword": "123456"
+}
+
 ### 13. Get All Document Types
 GET {{baseUrl}}/documenttypes
 Authorization: Bearer {{token}}
