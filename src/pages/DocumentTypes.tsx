@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
+import { useEffect } from 'react';
 import { FileType, Plus, Edit, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
+import { documentTypeService } from '../services/documentTypeService';
 import Modal from '../components/Common/Modal';
 import toast from 'react-hot-toast';
 
 const DocumentTypes: React.FC = () => {
   const { user } = useAuth();
-  const { documentTypes, addDocumentType, updateDocumentType, deleteDocumentType } = useApp();
+  const { documentTypes, setDocumentTypes, addDocumentType, updateDocumentType, deleteDocumentType } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDocumentType, setEditingDocumentType] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -18,10 +21,26 @@ const DocumentTypes: React.FC = () => {
     companyId: user?.companyId || ''
   });
 
+  useEffect(() => {
+    loadDocumentTypes();
+  }, []);
+
+  const loadDocumentTypes = async () => {
+    try {
+      setLoading(true);
+      const data = await documentTypeService.getAll();
+      setDocumentTypes(data);
+    } catch (error) {
+      toast.error('Belge türleri yüklenirken hata oluştu');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Kullanıcının görebileceği belge türlerini filtrele
-  const filteredDocumentTypes = user?.role === 'SuperAdmin' 
-    ? documentTypes 
-    : documentTypes.filter(dt => dt.companyId === user?.companyId);
+  const filteredDocumentTypes = documentTypes.filter(dt => 
+    user?.role === 'SuperAdmin' || !dt.companyId || dt.companyId === user?.companyId
+  );
 
   const commonExtensions = [
     { value: '.pdf', label: 'PDF' },
@@ -84,7 +103,7 @@ const DocumentTypes: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name || !formData.description) {
@@ -102,21 +121,45 @@ const DocumentTypes: React.FC = () => {
       return;
     }
 
-    if (editingDocumentType) {
-      updateDocumentType(editingDocumentType.id, formData);
-      toast.success('Belge türü başarıyla güncellendi');
-    } else {
-      addDocumentType(formData);
-      toast.success('Belge türü başarıyla eklendi');
+    try {
+      setLoading(true);
+      const documentTypeData = {
+        name: formData.name,
+        description: formData.description,
+        allowedExtensions: formData.allowedExtensions,
+        maxFileSize: formData.maxFileSize,
+        companyId: user?.role === 'SuperAdmin' && formData.companyId ? parseInt(formData.companyId) : user?.companyId,
+        isActive: true
+      };
+
+      if (editingDocumentType) {
+        const updated = await documentTypeService.update(editingDocumentType.id, documentTypeData);
+        updateDocumentType(editingDocumentType.id, updated);
+        toast.success('Belge türü başarıyla güncellendi');
+      } else {
+        const created = await documentTypeService.create(documentTypeData);
+        addDocumentType(created);
+        toast.success('Belge türü başarıyla eklendi');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'İşlem başarısız');
     }
     
     handleCloseModal();
   };
 
-  const handleDelete = (documentType: any) => {
+  const handleDelete = async (documentType: any) => {
     if (window.confirm(`${documentType.name} belge türünü silmek istediğinizden emin misiniz?`)) {
-      deleteDocumentType(documentType.id);
-      toast.success('Belge türü başarıyla silindi');
+      try {
+        setLoading(true);
+        await documentTypeService.delete(documentType.id);
+        deleteDocumentType(documentType.id);
+        toast.success('Belge türü başarıyla silindi');
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || 'Silme işlemi başarısız');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
