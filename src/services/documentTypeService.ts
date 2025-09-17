@@ -33,7 +33,9 @@ export const documentTypeService = {
   },
 
   async create(documentType: CreateDocumentTypeRequest): Promise<DocumentType> {
+    console.log('Creating document type:', documentType);
     const response = await api.post('/documenttypes', documentType);
+    console.log('Document type created:', response.data);
     return response.data;
   },
 

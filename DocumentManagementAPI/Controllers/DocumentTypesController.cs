@@ -129,6 +129,8 @@ namespace DocumentManagementAPI.Controllers
                 var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value;
                 var currentUserCompanyId = User.FindFirst("CompanyId")?.Value;
 
+                _logger.LogInformation("Creating document type: {Name} by user role: {Role}", createDocumentTypeDto.Name, currentUserRole);
+
                 // CompanyAdmin can only create document types for their company
                 if (currentUserRole == "CompanyAdmin")
                 {
@@ -138,6 +140,7 @@ namespace DocumentManagementAPI.Controllers
                     }
                     else
                     {
+                        _logger.LogWarning("CompanyAdmin without valid company ID trying to create document type");
                         return BadRequest(new { message = "Invalid company information" });
                     }
                 }
@@ -148,6 +151,7 @@ namespace DocumentManagementAPI.Controllers
                     var companyExists = await _context.Companies.AnyAsync(c => c.Id == createDocumentTypeDto.CompanyId.Value);
                     if (!companyExists)
                     {
+                        _logger.LogWarning("Document type creation failed: Invalid company ID {CompanyId}", createDocumentTypeDto.CompanyId);
                         return BadRequest(new { message = "Invalid company" });
                     }
                 }
@@ -158,6 +162,7 @@ namespace DocumentManagementAPI.Controllers
 
                 if (existingDocumentType)
                 {
+                    _logger.LogWarning("Document type creation failed: Duplicate name {Name} for company {CompanyId}", createDocumentTypeDto.Name, createDocumentTypeDto.CompanyId);
                     return BadRequest(new { message = "Document type with same name already exists for this company" });
                 }
 
@@ -173,8 +178,10 @@ namespace DocumentManagementAPI.Controllers
                     UpdatedAt = DateTime.UtcNow
                 };
 
+                _logger.LogInformation("Adding document type to context: {Name}", documentType.Name);
                 _context.DocumentTypes.Add(documentType);
                 await _context.SaveChangesAsync();
+                _logger.LogInformation("Document type saved successfully with ID: {Id}", documentType.Id);
 
                 // Load company name for response
                 await _context.Entry(documentType).Reference(dt => dt.Company).LoadAsync();

@@ -132,6 +132,8 @@ const DocumentTypes: React.FC = () => {
         isActive: true
       };
 
+      console.log('Submitting document type:', documentTypeData);
+      console.log('User info:', { role: user?.role, companyId: user?.companyId });
       if (editingDocumentType) {
         const updated = await documentTypeService.update(editingDocumentType.id, documentTypeData);
         updateDocumentType(editingDocumentType.id, updated);
@@ -141,6 +143,7 @@ const DocumentTypes: React.FC = () => {
         addDocumentType(created);
         toast.success('Belge türü başarıyla eklendi');
       }
+      handleCloseModal();
     } catch (error: any) {
       console.error('Document type operation error:', error);
       toast.error(error.response?.data?.message || 'İşlem başarısız');
@@ -150,8 +153,6 @@ const DocumentTypes: React.FC = () => {
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'İşlem başarısız');
     }
-    
-    handleCloseModal();
   };
 
   const handleDelete = async (documentType: any) => {
