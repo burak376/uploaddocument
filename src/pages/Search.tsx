@@ -1,45 +1,68 @@
 import React, { useState } from 'react';
+import { useEffect } from 'react';
 import { Search as SearchIcon, FileText, Download, Eye, Calendar, User, Filter } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
+import { documentService } from '../services/documentService';
 import toast from 'react-hot-toast';
 
 const Search: React.FC = () => {
   const { user } = useAuth();
-  const { documents, documentTypes, companies } = useApp();
+  const { documentTypes, companies } = useApp();
+  const [documents, setDocuments] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDocumentType, setSelectedDocumentType] = useState('');
   const [selectedCompany, setSelectedCompany] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user?.role !== 'User') {
+      performSearch();
+    }
+  }, [user]);
+
+  const performSearch = async () => {
+    if (user?.role === 'User') return;
+
+    try {
+      setLoading(true);
+      const searchRequest = {
+        searchTerm: searchTerm || undefined,
+        documentTypeId: selectedDocumentType ? parseInt(selectedDocumentType) : undefined,
+        companyId: selectedCompany ? parseInt(selectedCompany) : undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        page: 1,
+        pageSize: 50
+      };
+
+      const result = await documentService.search(searchRequest);
+      setSearchResults(result.documents);
+    } catch (error) {
+      toast.error('Arama sırasında hata oluştu');
+      setSearchResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Trigger search when filters change
+  useEffect(() => {
+    if (user?.role !== 'User') {
+      const timeoutId = setTimeout(() => {
+        performSearch();
+      }, 500); // Debounce search
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [searchTerm, selectedDocumentType, selectedCompany, dateFrom, dateTo]);
 
   // Kullanıcının arama yapabileceği belgeleri filtrele
-  const searchableDocuments = documents.filter(doc => {
-    if (user?.role === 'SuperAdmin') {
-      return true; // Süper admin tüm belgeleri görebilir
-    }
-    if (user?.role === 'CompanyAdmin') {
-      return doc.companyId === user.companyId; // Firma admin sadece kendi firmasının belgelerini görebilir
-    }
-    return false; // Normal kullanıcılar arama yapamaz
-  });
-
-  // Filtrelenmiş belgeleri al
-  const filteredDocuments = searchableDocuments.filter(doc => {
-    const matchesSearch = !searchTerm || 
-      doc.originalName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.documentTypeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.uploadedByName.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesType = !selectedDocumentType || doc.documentTypeId === selectedDocumentType;
-    const matchesCompany = !selectedCompany || doc.companyId === selectedCompany;
-    
-    const matchesDateFrom = !dateFrom || new Date(doc.uploadDate) >= new Date(dateFrom);
-    const matchesDateTo = !dateTo || new Date(doc.uploadDate) <= new Date(dateTo + 'T23:59:59');
-    
-    return matchesSearch && matchesType && matchesCompany && matchesDateFrom && matchesDateTo;
-  });
+  const filteredDocuments = searchResults;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('tr-TR', {
@@ -55,12 +78,25 @@ const Search: React.FC = () => {
     return `${size} MB`;
   };
 
-  const handleDownload = (document: any) => {
-    toast.success(`${document.originalName} indiriliyor...`);
+  const handleDownload = async (document: any) => {
+    try {
+      const blob = await documentService.download(document.id);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = document.originalName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success(`${document.originalName} indirildi`);
+    } catch (error) {
+      toast.error('Dosya indirilemedi');
+    }
   };
 
   const handleView = (document: any) => {
-    toast.info(`${document.originalName} görüntüleniyor...`);
+    handleDownload(document);
   };
 
   const clearFilters = () => {
@@ -69,6 +105,7 @@ const Search: React.FC = () => {
     setSelectedCompany('');
     setDateFrom('');
     setDateTo('');
+    setSearchResults([]);
   };
 
   // Kullanıcının erişim yetkisi kontrolü
@@ -114,9 +151,12 @@ const Search: React.FC = () => {
             <input
               type="text"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+              }}
               placeholder="Belge adı, türü veya yükleyen kişi ara..."
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              disabled={loading}
             />
           </div>
 
@@ -211,7 +251,12 @@ const Search: React.FC = () => {
 
       {/* Sonuçlar */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        {filteredDocuments.length > 0 ? (
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Aranıyor...</p>
+          </div>
+        ) : filteredDocuments.length > 0 ? (
           <div>
             <div className="p-6 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">
@@ -247,8 +292,8 @@ const Search: React.FC = () => {
                         <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
                           <span>Boyut: {formatFileSize(document.fileSize)}</span>
                           <span>Format: {document.fileExtension}</span>
-                          {user?.role === 'SuperAdmin' && (
-                            <span>Firma: {companies.find(c => c.id === document.companyId)?.name}</span>
+                          {user?.role === 'SuperAdmin' && document.companyName && (
+                            <span>Firma: {document.companyName}</span>
                           )}
                         </div>
                       </div>

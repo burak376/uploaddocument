@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users as UsersIcon, Plus, Edit, Trash2, User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
+import { userService } from '../services/userService';
 import Modal from '../components/Common/Modal';
 import toast from 'react-hot-toast';
 
@@ -20,39 +21,8 @@ interface User {
 const Users: React.FC = () => {
   const { user: currentUser } = useAuth();
   const { companies } = useApp();
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: '1',
-      username: 'superadmin',
-      firstName: 'Super',
-      lastName: 'Admin',
-      email: 'admin@system.com',
-      role: 'SuperAdmin',
-      isActive: true
-    },
-    {
-      id: '2',
-      username: 'bugibo_admin',
-      firstName: 'Bugibo',
-      lastName: 'Admin',
-      email: 'admin@bugibo.com',
-      role: 'CompanyAdmin',
-      companyId: '1',
-      companyName: 'Bugibo Yazılım',
-      isActive: true
-    },
-    {
-      id: '3',
-      username: 'burak',
-      firstName: 'Burak',
-      lastName: 'Kullanıcı',
-      email: 'burak@bugibo.com',
-      role: 'User',
-      companyId: '1',
-      companyName: 'Bugibo Yazılım',
-      isActive: true
-    }
-  ]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -66,16 +36,40 @@ const Users: React.FC = () => {
     isActive: true
   });
 
+  useEffect(() => {
+    const loadUsersClean = async () => {
+      try {
+        setLoading(true);
+        const data = await userService.getAll();
+        const convertedUsers = data.map(convertApiUser);
+        setUsers(convertedUsers);
+      } catch (error) {
+        toast.error('Kullanıcılar yüklenirken hata oluştu');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUsersClean();
+  }, []);
+
+  // Convert API user to component User interface
+  const convertApiUser = (apiUser: any): User => {
+    return {
+      id: apiUser.id.toString(),
+      username: apiUser.username,
+      firstName: apiUser.firstName,
+      lastName: apiUser.lastName,
+      email: apiUser.email,
+      role: apiUser.role,
+      companyId: apiUser.companyId?.toString(),
+      companyName: apiUser.companyName,
+      isActive: apiUser.isActive
+    };
+  };
+
   // Kullanıcıları filtrele - SuperAdmin tüm kullanıcıları, CompanyAdmin sadece kendi firmasındakileri görebilir
-  const filteredUsers = users.filter(user => {
-    if (currentUser?.role === 'SuperAdmin') {
-      return true;
-    }
-    if (currentUser?.role === 'CompanyAdmin') {
-      return user.companyId === currentUser.companyId;
-    }
-    return false;
-  });
+  const filteredUsers = users;
 
   const handleOpenModal = (user?: User) => {
     if (user) {
@@ -97,7 +91,7 @@ const Users: React.FC = () => {
         lastName: '',
         email: '',
         role: currentUser?.role === 'SuperAdmin' ? 'CompanyAdmin' : 'User',
-        companyId: currentUser?.role === 'CompanyAdmin' ? currentUser.companyId || '' : '',
+        companyId: currentUser?.role === 'CompanyAdmin' ? currentUser.companyId?.toString() || '' : '',
         isActive: true
       });
     }
@@ -118,7 +112,16 @@ const Users: React.FC = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const getRoleNumber = (role: string) => {
+    switch (role) {
+      case 'SuperAdmin': return 1;
+      case 'CompanyAdmin': return 2;
+      case 'User': return 3;
+      default: return 3;
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.username || !formData.firstName || !formData.lastName || !formData.email) {
@@ -131,37 +134,65 @@ const Users: React.FC = () => {
       return;
     }
 
-    const companyName = companies.find(c => c.id === formData.companyId)?.name;
-
-    if (editingUser) {
-      setUsers(prev => prev.map(u => u.id === editingUser.id ? {
-        ...u,
-        ...formData,
-        companyName: formData.role === 'SuperAdmin' ? undefined : companyName
-      } : u));
-      toast.success('Kullanıcı başarıyla güncellendi');
-    } else {
-      const newUser: User = {
-        id: Date.now().toString(),
-        ...formData,
-        companyName: formData.role === 'SuperAdmin' ? undefined : companyName
-      };
-      setUsers(prev => [...prev, newUser]);
-      toast.success('Kullanıcı başarıyla eklendi');
+    try {
+      setLoading(true);
+      
+      if (editingUser) {
+        const updateData = {
+          username: formData.username,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          role: getRoleNumber(formData.role),
+          companyId: formData.role === 'SuperAdmin' ? undefined : parseInt(formData.companyId),
+          isActive: formData.isActive
+        };
+        const updated = await userService.update(parseInt(editingUser.id), updateData);
+        const convertedUser = convertApiUser(updated);
+        setUsers(prev => prev.map(u => u.id === editingUser.id ? convertedUser : u));
+        toast.success('Kullanıcı başarıyla güncellendi');
+      } else {
+        const createData = {
+          username: formData.username,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          password: '12345', // Default password
+          role: getRoleNumber(formData.role),
+          companyId: formData.role === 'SuperAdmin' ? undefined : parseInt(formData.companyId),
+          isActive: formData.isActive
+        };
+        const created = await userService.create(createData);
+        const convertedUser = convertApiUser(created);
+        setUsers(prev => [...prev, convertedUser]);
+        toast.success('Kullanıcı başarıyla eklendi');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'İşlem başarısız');
+    } finally {
+      setLoading(false);
     }
     
     handleCloseModal();
   };
 
-  const handleDelete = (user: User) => {
-    if (user.id === currentUser?.id) {
+  const handleDelete = async (user: User) => {
+    if (user.id === currentUser?.id.toString()) {
       toast.error('Kendi hesabınızı silemezsiniz');
       return;
     }
 
     if (window.confirm(`${user.firstName} ${user.lastName} kullanıcısını silmek istediğinizden emin misiniz?`)) {
-      setUsers(prev => prev.filter(u => u.id !== user.id));
-      toast.success('Kullanıcı başarıyla silindi');
+      try {
+        setLoading(true);
+        await userService.delete(parseInt(user.id));
+        setUsers(prev => prev.filter(u => u.id !== user.id));
+        toast.success('Kullanıcı başarıyla silindi');
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || 'Silme işlemi başarısız');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -198,6 +229,7 @@ const Users: React.FC = () => {
         <button
           onClick={() => handleOpenModal()}
           className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          disabled={loading}
         >
           <Plus className="h-4 w-4" />
           <span>Yeni Kullanıcı</span>
@@ -285,7 +317,7 @@ const Users: React.FC = () => {
                           onClick={() => handleDelete(user)}
                           className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
                           title="Sil"
-                          disabled={user.id === currentUser?.id}
+                          disabled={user.id === currentUser?.id.toString() || loading}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
