@@ -13,6 +13,7 @@ import Companies from './pages/Companies';
 import Users from './pages/Users';
 import DocumentTypes from './pages/DocumentTypes';
 import Search from './pages/Search';
+import ChangePassword from './pages/ChangePassword';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -115,6 +116,14 @@ const AppContent: React.FC = () => {
           element={
             <ProtectedRoute>
               <Search />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/change-password" 
+          element={
+            <ProtectedRoute>
+              <ChangePassword />
             </ProtectedRoute>
           } 
         />

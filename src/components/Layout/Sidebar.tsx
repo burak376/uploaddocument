@@ -7,7 +7,8 @@ import {
   FileType, 
   Upload, 
   FileText, 
-  Search 
+  Search,
+  Lock
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -56,6 +57,12 @@ const Sidebar: React.FC = () => {
       path: '/search',
       icon: Search,
       roles: ['SuperAdmin', 'CompanyAdmin']
+    },
+    {
+      name: 'Şifre Değiştir',
+      path: '/change-password',
+      icon: Lock,
+      roles: ['SuperAdmin', 'CompanyAdmin', 'User']
     }
   ];
 
