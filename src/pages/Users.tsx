@@ -44,10 +44,10 @@ const Users: React.FC = () => {
 
   useEffect(() => {
     loadUsers();
-  }, [user?.role]);
+  }, [currentUser?.role]);
 
   const loadUsers = async () => {
-    if (!user || (user.role !== 'SuperAdmin' && user.role !== 'CompanyAdmin')) return;
+    if (!currentUser || (currentUser.role !== 'SuperAdmin' && currentUser.role !== 'CompanyAdmin')) return;
     
     try {
       setLoading(true);
@@ -72,6 +72,7 @@ const Users: React.FC = () => {
       } finally {
         setLoading(false);
       }
+  };
 
   // Convert API user to component User interface
   const convertApiUser = (apiUser: any): User => {
