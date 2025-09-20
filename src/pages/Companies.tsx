@@ -22,9 +22,11 @@ const Companies: React.FC = () => {
 
   useEffect(() => {
     loadCompanies();
-  }, []);
+  }, [user?.role]);
 
   const loadCompanies = async () => {
+    if (user?.role !== 'SuperAdmin') return;
+    
     try {
       setLoading(true);
       const data = await companyService.getAll();

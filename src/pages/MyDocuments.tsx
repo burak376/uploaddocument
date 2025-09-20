@@ -15,9 +15,11 @@ const MyDocuments: React.FC = () => {
 
   useEffect(() => {
     loadDocuments();
-  }, []);
+  }, [user?.id]);
 
   const loadDocuments = async () => {
+    if (!user) return;
+    
     try {
       setLoading(true);
       const data = await documentService.getAll();

@@ -32,9 +32,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Sayfa yenilendiğinde oturum kontrolü
     const savedToken = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
-    if (savedToken && savedUser) {
-      setUser(JSON.parse(savedUser));
+    
+    try {
+      if (savedToken && savedUser) {
+        const userData = JSON.parse(savedUser);
+        setUser(userData);
+      }
+    } catch (error) {
+      console.error('Error parsing saved user data:', error);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
     }
+    
     setLoading(false);
   }, []);
 

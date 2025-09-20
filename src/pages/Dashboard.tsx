@@ -22,9 +22,11 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [user?.role]);
 
   const loadData = async () => {
+    if (!user) return;
+    
     try {
       if (user?.role === 'SuperAdmin') {
         const companiesData = await companyService.getAll();

@@ -17,9 +17,11 @@ const Upload: React.FC = () => {
 
   useEffect(() => {
     loadDocumentTypes();
-  }, []);
+  }, [user?.companyId]);
 
   const loadDocumentTypes = async () => {
+    if (!user) return;
+    
     try {
       setLoading(true);
       const data = await documentTypeService.getAll();

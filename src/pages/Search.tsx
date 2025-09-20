@@ -23,10 +23,10 @@ const Search: React.FC = () => {
     if (user?.role !== 'User') {
       performSearch();
     }
-  }, [user]);
+  }, [user?.role]);
 
   const performSearch = async () => {
-    if (user?.role === 'User') return;
+    if (!user || user?.role === 'User') return;
 
     try {
       setLoading(true);

@@ -43,7 +43,25 @@ const Users: React.FC = () => {
   });
 
   useEffect(() => {
-    const loadUsersClean = async () => {
+    loadUsers();
+  }, [user?.role]);
+
+  const loadUsers = async () => {
+    if (!user || (user.role !== 'SuperAdmin' && user.role !== 'CompanyAdmin')) return;
+    
+    try {
+      setLoading(true);
+      const data = await userService.getAll();
+      const convertedUsers = data.map(convertApiUser);
+      setUsers(convertedUsers);
+    } catch (error) {
+      toast.error('Kullanıcılar yüklenirken hata oluştu');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadUsersOld = async () => {
       try {
         setLoading(true);
         const data = await userService.getAll();
@@ -54,10 +72,6 @@ const Users: React.FC = () => {
       } finally {
         setLoading(false);
       }
-    };
-
-    loadUsersClean();
-  }, []);
 
   // Convert API user to component User interface
   const convertApiUser = (apiUser: any): User => {

@@ -23,9 +23,11 @@ const DocumentTypes: React.FC = () => {
 
   useEffect(() => {
     loadDocumentTypes();
-  }, []);
+  }, [user?.role]);
 
   const loadDocumentTypes = async () => {
+    if (!user) return;
+    
     try {
       setLoading(true);
       const data = await documentTypeService.getAll();
