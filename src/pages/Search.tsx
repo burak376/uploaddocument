@@ -23,24 +23,26 @@ const Search: React.FC = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [pageSize, setPageSize] = useState(10);
 
-  useEffect(() => {
-    if (user?.role !== 'User') {
-      performSearch();
-    }
-  }, [user?.role]);
-
   // Sayfa boyutu seçenekleri
   const pageSizeOptions = [5, 10, 20, 50];
 
   const handlePageSizeChange = (newPageSize: number) => {
+    if (loading) return; // Prevent multiple calls
+    
     setPageSize(newPageSize);
     setCurrentPage(1); // Reset to first page
-    // Trigger search with new page size
-    performSearch();
+    
+    // Trigger search with new page size after state update
+    setTimeout(() => {
+      performSearch();
+    }, 100);
   };
 
   const performSearch = async () => {
     if (!user || user?.role === 'User') return;
+
+    // Prevent duplicate calls
+    if (loading) return;
 
     try {
       setLoading(true);
@@ -73,6 +75,9 @@ const Search: React.FC = () => {
   const performPagedSearch = async (page: number) => {
     if (!user || user?.role === 'User') return;
 
+    // Prevent duplicate calls
+    if (loading) return;
+
     try {
       setLoading(true);
       const searchRequest = {
@@ -98,17 +103,29 @@ const Search: React.FC = () => {
     }
   };
 
-  // Trigger search when filters change
+  // Debounced search when filters change
   useEffect(() => {
-    if (user?.role !== 'User') {
+    if (!user || user?.role === 'User') return;
+    
+    // Only search if we have some criteria or it's initial load
+    if (searchTerm || selectedDocumentType || selectedCompany || dateFrom || dateTo) {
       const timeoutId = setTimeout(() => {
         performSearch();
-      }, 500); // Debounce search
+      }, 800); // Increased debounce time
 
       return () => clearTimeout(timeoutId);
     }
-  }, [searchTerm, selectedDocumentType, selectedCompany, dateFrom, dateTo]);
+  }, [searchTerm, selectedDocumentType, selectedCompany, dateFrom, dateTo, user?.role]);
 
+  // Initial load - only once when component mounts
+  useEffect(() => {
+    if (user?.role !== 'User') {
+      // Only perform initial search if no filters are set
+      if (!searchTerm && !selectedDocumentType && !selectedCompany && !dateFrom && !dateTo) {
+        performSearch();
+      }
+    }
+  }, [user?.role]); // Only depend on user role for initial load
   // Kullanıcının arama yapabileceği belgeleri filtrele
   const filteredDocuments = searchResults;
 
@@ -203,6 +220,8 @@ const Search: React.FC = () => {
   };
 
   const clearFilters = () => {
+    if (loading) return; // Prevent clearing during search
+    
     setSearchTerm('');
     setSelectedDocumentType('');
     setSelectedCompany('');
@@ -210,6 +229,8 @@ const Search: React.FC = () => {
     setDateTo('');
     setSearchResults([]);
     setCurrentPage(1);
+    setTotalPages(0);
+    setTotalCount(0);
   };
 
   // Kullanıcının erişim yetkisi kontrolü
