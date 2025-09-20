@@ -35,7 +35,7 @@ namespace DocumentManagementAPI.DTOs
         public DateTime? DateFrom { get; set; }
         public DateTime? DateTo { get; set; }
         public int Page { get; set; } = 1;
-        public int PageSize { get; set; } = 10;
+        public int PageSize { get; set; } = 0; // 0 means use default
     }
 
     public class DocumentSearchResultDto

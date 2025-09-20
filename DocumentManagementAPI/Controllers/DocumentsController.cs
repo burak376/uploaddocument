@@ -367,6 +367,18 @@ namespace DocumentManagementAPI.Controllers
         {
             try
             {
+                // Set default page size if not provided
+                if (searchDto.PageSize <= 0)
+                {
+                    searchDto.PageSize = 10; // Default page size
+                }
+                
+                // Limit maximum page size for performance
+                if (searchDto.PageSize > 100)
+                {
+                    searchDto.PageSize = 100;
+                }
+
                 var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value;
                 var currentUserCompanyId = User.FindFirst("CompanyId")?.Value;
 

@@ -21,13 +21,23 @@ const Search: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
-  const [pageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     if (user?.role !== 'User') {
       performSearch();
     }
   }, [user?.role]);
+
+  // Sayfa boyutu seçenekleri
+  const pageSizeOptions = [5, 10, 20, 50];
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1); // Reset to first page
+    // Trigger search with new page size
+    performSearch();
+  };
 
   const performSearch = async () => {
     if (!user || user?.role === 'User') return;
@@ -41,13 +51,14 @@ const Search: React.FC = () => {
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         page: 1,
-        pageSize: pageSize
+        pageSize: pageSize || 10
       };
 
       const result = await documentService.search(searchRequest);
       setSearchResults(result.documents);
       setTotalPages(result.totalPages);
       setTotalCount(result.totalCount);
+      setPageSize(result.pageSize);
       setCurrentPage(1);
     } catch (error) {
       toast.error('Arama sırasında hata oluştu');
@@ -71,13 +82,14 @@ const Search: React.FC = () => {
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         page: page,
-        pageSize: pageSize
+        pageSize: pageSize || 10
       };
 
       const result = await documentService.search(searchRequest);
       setSearchResults(result.documents);
       setTotalPages(result.totalPages);
       setTotalCount(result.totalCount);
+      setPageSize(result.pageSize);
       setCurrentPage(page);
     } catch (error) {
       toast.error('Arama sırasında hata oluştu');
@@ -420,7 +432,22 @@ const Search: React.FC = () => {
             {/* Sayfalama */}
             {totalPages > 1 && (
               <div className="px-6 py-4 border-t border-gray-200">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  {/* Sayfa boyutu seçici */}
+                  <div className="flex items-center space-x-2">
+                    <label className="text-sm text-gray-700">Sayfa başına:</label>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => handlePageSizeChange(parseInt(e.target.value))}
+                      className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={loading}
+                    >
+                      {pageSizeOptions.map(size => (
+                        <option key={size} value={size}>{size}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
                   <div className="text-sm text-gray-700">
                     <span className="font-medium">{((currentPage - 1) * pageSize) + 1}</span>
                     {' - '}
