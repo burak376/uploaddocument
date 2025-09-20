@@ -58,10 +58,31 @@ export const documentService = {
   },
 
   async download(id: number): Promise<Blob> {
-    const response = await api.get(`/documents/${id}/download`, {
-      responseType: 'blob',
-    });
-    return response.data;
+    try {
+      const response = await api.get(`/documents/${id}/download`, {
+        responseType: 'blob',
+        timeout: 30000, // 30 saniye timeout
+      });
+      
+      // Response kontrolü
+      if (!response.data) {
+        throw new Error('Boş response alındı');
+      }
+      
+      return response.data;
+    } catch (error: any) {
+      console.error('Document download error:', error);
+      
+      if (error.response?.status === 404) {
+        throw new Error('Dosya bulunamadı');
+      } else if (error.response?.status === 403) {
+        throw new Error('Bu dosyaya erişim yetkiniz yok');
+      } else if (error.code === 'ECONNABORTED') {
+        throw new Error('İstek zaman aşımına uğradı');
+      }
+      
+      throw error;
+    }
   },
 
   async delete(id: number): Promise<void> {

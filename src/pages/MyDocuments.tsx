@@ -69,21 +69,34 @@ const MyDocuments: React.FC = () => {
 
   const handleDownload = async (document: any) => {
     try {
-      setLoading(true);
+      const loadingToast = toast.loading(`${document.originalName} indiriliyor...`);
       const blob = await documentService.download(document.id);
+      
+      // Blob kontrolü
+      if (!blob || blob.size === 0) {
+        toast.dismiss(loadingToast);
+        toast.error('Dosya bulunamadı veya boş');
+        return;
+      }
+      
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = window.document.createElement('a');
       a.href = url;
       a.download = document.originalName;
-      document.body.appendChild(a);
+      a.style.display = 'none';
+      window.document.body.appendChild(a);
       a.click();
+      
+      // Cleanup
       window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      window.document.body.removeChild(a);
+      
+      toast.dismiss(loadingToast);
       toast.success(`${document.originalName} indirildi`);
-    } catch (error) {
-      toast.error('Dosya indirilemedi');
-    } finally {
-      setLoading(false);
+    } catch (error: any) {
+      console.error('Download error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Dosya indirilemedi';
+      toast.error(errorMessage);
     }
   };
 
@@ -99,8 +112,47 @@ const MyDocuments: React.FC = () => {
     }
   };
 
-  const handleView = (document: any) => {
-    handleDownload(document);
+  const handleView = async (document: any) => {
+    try {
+      const loadingToast = toast.loading(`${document.originalName} açılıyor...`);
+      const blob = await documentService.download(document.id);
+      
+      // Blob kontrolü
+      if (!blob || blob.size === 0) {
+        toast.dismiss(loadingToast);
+        toast.error('Dosya bulunamadı veya boş');
+        return;
+      }
+      
+      const url = window.URL.createObjectURL(blob);
+      
+      // Yeni sekmede aç
+      const newWindow = window.open(url, '_blank');
+      if (!newWindow) {
+        // Popup blocked, fallback to download
+        const a = window.document.createElement('a');
+        a.href = url;
+        a.download = document.originalName;
+        a.style.display = 'none';
+        window.document.body.appendChild(a);
+        a.click();
+        window.document.body.removeChild(a);
+        toast.dismiss(loadingToast);
+        toast.success('Dosya indirildi (popup engellendi)');
+      } else {
+        toast.dismiss(loadingToast);
+        toast.success('Dosya yeni sekmede açıldı');
+        
+        // Cleanup after a delay
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+        }, 1000);
+      }
+    } catch (error: any) {
+      console.error('View error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Dosya açılamadı';
+      toast.error(errorMessage);
+    }
   };
 
   return (

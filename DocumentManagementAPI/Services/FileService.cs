@@ -79,14 +79,19 @@ namespace DocumentManagementAPI.Services
             {
                 var fullPath = Path.Combine(_environment.ContentRootPath, filePath.Replace('/', '\\'));
                 
+                _logger.LogInformation("Attempting to read file from path: {FullPath}", fullPath);
+                
                 if (!File.Exists(fullPath))
                 {
+                    _logger.LogError("File does not exist at path: {FullPath}", fullPath);
                     throw new FileNotFoundException("File not found");
                 }
 
                 var fileBytes = await File.ReadAllBytesAsync(fullPath);
                 var fileName = Path.GetFileName(fullPath);
                 var contentType = GetContentType(Path.GetExtension(fileName));
+                
+                _logger.LogInformation("Successfully read file {FileName} with {FileSize} bytes", fileName, fileBytes.Length);
 
                 return (fileBytes, contentType, fileName);
             }

@@ -284,15 +284,21 @@ namespace DocumentManagementAPI.Controllers
                 var document = await query.FirstOrDefaultAsync(d => d.Id == id);
                 if (document == null)
                 {
+                    _logger.LogWarning("Document not found or access denied for document {DocumentId} by user {UserId}", id, currentUserId);
                     return NotFound(new { message = "Document not found" });
                 }
 
+                _logger.LogInformation("Attempting to download document {DocumentId} from path {FilePath}", id, document.FilePath);
+                
                 var (fileBytes, contentType, fileName) = await _fileService.GetFileAsync(document.FilePath);
+                
+                _logger.LogInformation("Successfully retrieved file {FileName} with {FileSize} bytes", fileName, fileBytes.Length);
 
                 return File(fileBytes, contentType, document.OriginalName);
             }
             catch (FileNotFoundException)
             {
+                _logger.LogError("File not found on disk for document {DocumentId}", id);
                 return NotFound(new { message = "File not found on disk" });
             }
             catch (Exception ex)
