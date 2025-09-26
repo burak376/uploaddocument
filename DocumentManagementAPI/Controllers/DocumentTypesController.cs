@@ -50,6 +50,9 @@ namespace DocumentManagementAPI.Controllers
 
                 var documentTypes = await query
                     .Where(dt => dt.IsActive)
+                    .ToListAsync();
+
+                var documentTypes = query.Where(dt => dt.IsActive).ToList()
                     .Select(dt => new DocumentTypeDto
                     {
                         Id = dt.Id,
@@ -62,8 +65,7 @@ namespace DocumentManagementAPI.Controllers
                         IsActive = dt.IsActive,
                         CreatedAt = dt.CreatedAt
                     })
-                    .ToListAsync();
-
+                    .ToList();
                 return Ok(documentTypes);
             }
             catch (Exception ex)
@@ -90,27 +92,27 @@ namespace DocumentManagementAPI.Controllers
                     query = query.Where(dt => dt.CompanyId == null || dt.CompanyId == companyId);
                 }
 
-                var documentType = await query
+                var documentTypeEntity = await query
                     .Where(dt => dt.Id == id)
-                    .Select(dt => new DocumentTypeDto
-                    {
-                        Id = dt.Id,
-                        Name = dt.Name,
-                        Description = dt.Description,
-                        AllowedExtensions = JsonSerializer.Deserialize<List<string>>(dt.AllowedExtensions) ?? new List<string>(),
-                        MaxFileSize = dt.MaxFileSize,
-                        CompanyId = dt.CompanyId,
-                        CompanyName = dt.Company != null ? dt.Company.Name : null,
-                        IsActive = dt.IsActive,
-                        CreatedAt = dt.CreatedAt
-                    })
                     .FirstOrDefaultAsync();
 
-                if (documentType == null)
+                if (documentTypeEntity == null)
                 {
                     return NotFound(new { message = "Document type not found" });
                 }
 
+                var documentType = new DocumentTypeDto
+                {
+                    Id = documentTypeEntity.Id,
+                    Name = documentTypeEntity.Name,
+                    Description = documentTypeEntity.Description,
+                    AllowedExtensions = JsonSerializer.Deserialize<List<string>>(documentTypeEntity.AllowedExtensions) ?? new List<string>(),
+                    MaxFileSize = documentTypeEntity.MaxFileSize,
+                    CompanyId = documentTypeEntity.CompanyId,
+                    CompanyName = documentTypeEntity.Company?.Name,
+                    IsActive = documentTypeEntity.IsActive,
+                    CreatedAt = documentTypeEntity.CreatedAt
+                };
                 return Ok(documentType);
             }
             catch (Exception ex)
