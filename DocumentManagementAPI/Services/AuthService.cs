@@ -22,6 +22,8 @@ namespace DocumentManagementAPI.Services
 
         public async Task<LoginResponseDto?> LoginAsync(LoginRequestDto loginRequest)
         {
+            try
+            {
             var user = await _context.Users
                 .Include(u => u.Company)
                 .FirstOrDefaultAsync(u => u.Username == loginRequest.Username && u.IsActive);
@@ -51,6 +53,13 @@ namespace DocumentManagementAPI.Services
                 Token = token,
                 User = userDto
             };
+            }
+            catch (Exception ex)
+            {
+                // Log the actual error for debugging
+                Console.WriteLine($"Database connection error: {ex.Message}");
+                throw new Exception("Database connection failed. Please try again later.", ex);
+            }
         }
 
         public string GenerateJwtToken(UserDto user)
