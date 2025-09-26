@@ -52,7 +52,7 @@ namespace DocumentManagementAPI.Services
             }
         }
 
-        public async Task<bool> DeleteFileAsync(string filePath)
+        public Task<bool> DeleteFileAsync(string filePath)
         {
             try
             {
@@ -61,15 +61,15 @@ namespace DocumentManagementAPI.Services
                 if (File.Exists(fullPath))
                 {
                     File.Delete(fullPath);
-                    return true;
+                    return Task.FromResult(true);
                 }
                 
-                return false;
+                return Task.FromResult(false);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting file: {FilePath}", filePath);
-                return false;
+                return Task.FromResult(false);
             }
         }
 

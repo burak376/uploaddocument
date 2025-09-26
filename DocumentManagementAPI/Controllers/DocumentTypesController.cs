@@ -158,7 +158,8 @@ namespace DocumentManagementAPI.Controllers
 
                 // Check if document type with same name exists for the same company
                 var existingDocumentType = await _context.DocumentTypes
-                    .AnyAsync(dt => dt.Name == createDocumentTypeDto.Name && dt.CompanyId == createDocumentTypeDto.CompanyId);
+                    .Where(dt => dt.Name == createDocumentTypeDto.Name && dt.CompanyId == createDocumentTypeDto.CompanyId)
+                    .AnyAsync();
 
                 if (existingDocumentType)
                 {
@@ -238,7 +239,8 @@ namespace DocumentManagementAPI.Controllers
 
                 // Check if another document type with same name exists for the same company
                 var existingDocumentType = await _context.DocumentTypes
-                    .AnyAsync(dt => dt.Id != id && dt.Name == updateDocumentTypeDto.Name && dt.CompanyId == documentType.CompanyId);
+                    .Where(dt => dt.Id != id && dt.Name == updateDocumentTypeDto.Name && dt.CompanyId == documentType.CompanyId)
+                    .AnyAsync();
 
                 if (existingDocumentType)
                 {
