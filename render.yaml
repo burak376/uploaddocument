@@ -12,9 +12,9 @@ services:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
       - key: ConnectionStrings__DefaultConnection
-        value: Server=sql7.freesqldatabase.com;Database=sql7800199;User=sql7800199;Password=xa3L1w7xpG;Port=3306;SslMode=None;AllowPublicKeyRetrieval=true;ConnectionTimeout=120;DefaultCommandTimeout=120;
+        value: Data Source=documentmanagement.db
       - key: JwtSettings__SecretKey
-        value: FreePlatform
+        value: FreePlatform-SecureKey-32Chars-Min-Change-This-Production-Key-2024
       - key: JwtSettings__Issuer
         value: DocumentManagementAPI
       - key: JwtSettings__Audience

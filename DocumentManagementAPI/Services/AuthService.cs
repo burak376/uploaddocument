@@ -24,41 +24,40 @@ namespace DocumentManagementAPI.Services
         {
             try
             {
-            var user = await _context.Users
-                .Include(u => u.Company)
-                .FirstOrDefaultAsync(u => u.Username == loginRequest.Username && u.IsActive);
+                var user = await _context.Users
+                    .Include(u => u.Company)
+                    .FirstOrDefaultAsync(u => u.Username == loginRequest.Username && u.IsActive);
 
-            if (user == null || !BCrypt.Net.BCrypt.Verify(loginRequest.Password, user.PasswordHash))
-            {
-                return null;
-            }
+                if (user == null || !BCrypt.Net.BCrypt.Verify(loginRequest.Password, user.PasswordHash))
+                {
+                    return null;
+                }
 
-            var userDto = new UserDto
-            {
-                Id = user.Id,
-                Username = user.Username,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Email = user.Email,
-                Role = user.Role.ToString(),
-                CompanyId = user.CompanyId,
-                CompanyName = user.Company?.Name,
-                IsActive = user.IsActive
-            };
+                var userDto = new UserDto
+                {
+                    Id = user.Id,
+                    Username = user.Username,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Email = user.Email,
+                    Role = user.Role.ToString(),
+                    CompanyId = user.CompanyId,
+                    CompanyName = user.Company?.Name,
+                    IsActive = user.IsActive
+                };
 
-            var token = GenerateJwtToken(userDto);
+                var token = GenerateJwtToken(userDto);
 
-            return new LoginResponseDto
-            {
-                Token = token,
-                User = userDto
-            };
+                return new LoginResponseDto
+                {
+                    Token = token,
+                    User = userDto
+                };
             }
             catch (Exception ex)
             {
-                // Log the actual error for debugging
-                Console.WriteLine($"Database connection error: {ex.Message}");
-                throw new Exception("Database connection failed. Please try again later.", ex);
+                Console.WriteLine($"Login error: {ex.Message}");
+                return null;
             }
         }
 
