@@ -1,5 +1,6 @@
 using DocumentManagementAPI.Data;
 using DocumentManagementAPI.Services;
+using DocumentManagementAPI.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -18,25 +19,41 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Add services to the container.
-// Use In-Memory Database for now (to test if app works)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    if (builder.Environment.IsDevelopment())
+    // Check if we have environment variables for database connection (Render deployment)
+    var dbServer = Environment.GetEnvironmentVariable("DB_SERVER") ?? "sql7.freesqldatabase.com";
+    var dbName = Environment.GetEnvironmentVariable("DB_NAME") ?? "sql7800199";
+    var dbUser = Environment.GetEnvironmentVariable("DB_USER") ?? "sql7800199";
+    var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD") ?? "xa3L1w7xpG";
+    var dbPort = Environment.GetEnvironmentVariable("DB_PORT") ?? "3306";
+    
+    // Always use MySQL for production/render deployment
+    if (!builder.Environment.IsDevelopment())
     {
-        // Local development - use MySQL
-        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+        // Production/Render - use MySQL with FreeSQLDatabase
+        var connectionString = $"Server={dbServer};Database={dbName};User={dbUser};Password={dbPassword};Port={dbPort};SslMode=Required;";
         options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
     }
     else
     {
-        // Production - use In-Memory for now
-        options.UseInMemoryDatabase("DocumentManagementDB");
+        // Local development - use appsettings or InMemory
+        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+        if (!string.IsNullOrEmpty(connectionString))
+        {
+            options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+        }
+        else
+        {
+            // Fallback to InMemory for development
+            options.UseInMemoryDatabase("DocumentManagementDB");
+        }
     }
 });
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = jwtSettings["SecretKey"];
+var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") ?? jwtSettings["SecretKey"];
 
 builder.Services.AddAuthentication(options =>
 {
@@ -68,8 +85,9 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
             "http://localhost:5173", 
             "http://localhost:3000",
-            "https://belge-y-netim-sistem-b3l7.bolt.host",
-            "https://stalwart-blancmange-6541be.netlify.app",
+            "https://*.netlify.app",
+            "https://68d6976--dokumanyukleme.netlify.app",
+            "https://dokumanyukleme.netlify.app",
             "https://uploaddocumentbe.onrender.com"
         )
               .AllowAnyHeader()
@@ -169,6 +187,21 @@ _ = Task.Run(async () =>
     }
 });
 
+Log.Information("Document Management API starting up...");
+
+try
+{
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
+
 // Seed data for InMemory database
 async Task SeedInMemoryDataAsync(ApplicationDbContext context)
 {
@@ -220,6 +253,20 @@ async Task SeedInMemoryDataAsync(ApplicationDbContext context)
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
+        },
+        new User
+        {
+            Id = 3,
+            Username = "burak",
+            FirstName = "Burak",
+            LastName = "Kullanıcı",
+            Email = "burak@bugibo.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("12345"),
+            Role = UserRole.User,
+            CompanyId = 1,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         }
     };
     
@@ -227,19 +274,4 @@ async Task SeedInMemoryDataAsync(ApplicationDbContext context)
     await context.SaveChangesAsync();
     
     Log.Information("InMemory database seeded successfully");
-}
-
-Log.Information("Document Management API starting up...");
-
-try
-{
-    app.Run();
-}
-catch (Exception ex)
-{
-    Log.Fatal(ex, "Application terminated unexpectedly");
-}
-finally
-{
-    Log.CloseAndFlush();
 }

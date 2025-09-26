@@ -22,6 +22,10 @@ cd ..
 
 ### 2. Database Kurulumu
 ```bash
+# Environment variables ayarla (opsiyonel)
+cp DocumentManagementAPI/.env.example DocumentManagementAPI/.env
+# .env dosyasını düzenle
+
 # MySQL'de database oluştur
 CREATE DATABASE DocumentManagementDB;
 
