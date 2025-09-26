@@ -59,11 +59,8 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
             "http://localhost:5173", 
             "http://localhost:3000",
-            "https://*.netlify.app",
-            "https://*.vercel.app",
-            "https://*.render.com",
-            "https://*.fly.dev",
-            "https://yourdomain.com"
+            "https://belge-y-netim-sistem-b3l7.bolt.host",
+            "https://stalwart-blancmange-6541be.netlify.app"
         )
               .AllowAnyHeader()
               .AllowAnyMethod()
