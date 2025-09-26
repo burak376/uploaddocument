@@ -13,7 +13,6 @@ var builder = WebApplication.CreateBuilder(args);
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .WriteTo.Console()
-    .WriteTo.File("logs/log-.txt", rollingInterval: RollingInterval.Day)
     .CreateLogger();
 
 builder.Host.UseSerilog();
@@ -24,8 +23,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 21)), 
         mysqlOptions => mysqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 5,
-            maxRetryDelay: TimeSpan.FromSeconds(30),
+            maxRetryCount: 3,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
             errorNumbersToAdd: null));
 });
 
@@ -119,15 +118,15 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Document Management API V1");
-        c.RoutePrefix = string.Empty; // Swagger UI at root
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Document Management API V1");
+    c.RoutePrefix = string.Empty; // Swagger UI at root
+});
+
+// Health check endpoint
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
 app.UseHttpsRedirection();
 
@@ -138,28 +137,21 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Ensure database is created and seeded
-using (var scope = app.Services.CreateScope())
+// Database initialization - non-blocking
+_ = Task.Run(async () =>
 {
+    using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     try
     {
-        // Try to connect to database, but don't fail if it's not available
-        if (context.Database.CanConnect())
-        {
-            context.Database.EnsureCreated();
-            Log.Information("Database initialized successfully");
-        }
-        else
-        {
-            Log.Warning("Database connection not available at startup, will retry on first request");
-        }
+        await context.Database.EnsureCreatedAsync();
+        Log.Information("Database initialized successfully");
     }
     catch (Exception ex)
     {
         Log.Warning(ex, "Database initialization failed, will retry on first request");
     }
-}
+});
 
 Log.Information("Document Management API starting up...");
 
