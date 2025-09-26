@@ -1,5 +1,6 @@
 using DocumentManagementAPI.Data;
 using DocumentManagementAPI.Services;
+using DocumentManagementAPI.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -18,7 +19,6 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Add services to the container.
-// Use In-Memory Database for now (to test if app works)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     if (builder.Environment.IsDevelopment())
@@ -169,6 +169,21 @@ _ = Task.Run(async () =>
     }
 });
 
+Log.Information("Document Management API starting up...");
+
+try
+{
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
+
 // Seed data for InMemory database
 async Task SeedInMemoryDataAsync(ApplicationDbContext context)
 {
@@ -220,6 +235,20 @@ async Task SeedInMemoryDataAsync(ApplicationDbContext context)
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
+        },
+        new User
+        {
+            Id = 3,
+            Username = "burak",
+            FirstName = "Burak",
+            LastName = "Kullanıcı",
+            Email = "burak@bugibo.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("12345"),
+            Role = UserRole.User,
+            CompanyId = 1,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         }
     };
     
@@ -227,19 +256,4 @@ async Task SeedInMemoryDataAsync(ApplicationDbContext context)
     await context.SaveChangesAsync();
     
     Log.Information("InMemory database seeded successfully");
-}
-
-Log.Information("Document Management API starting up...");
-
-try
-{
-    app.Run();
-}
-catch (Exception ex)
-{
-    Log.Fatal(ex, "Application terminated unexpectedly");
-}
-finally
-{
-    Log.CloseAndFlush();
 }
