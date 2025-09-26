@@ -52,21 +52,20 @@ namespace DocumentManagementAPI.Controllers
                     .Where(dt => dt.IsActive)
                     .ToListAsync();
 
-                var documentTypes = query.Where(dt => dt.IsActive).ToList()
-                    .Select(dt => new DocumentTypeDto
-                    {
-                        Id = dt.Id,
-                        Name = dt.Name,
-                        Description = dt.Description,
-                        AllowedExtensions = JsonSerializer.Deserialize<List<string>>(dt.AllowedExtensions) ?? new List<string>(),
-                        MaxFileSize = dt.MaxFileSize,
-                        CompanyId = dt.CompanyId,
-                        CompanyName = dt.Company != null ? dt.Company.Name : null,
-                        IsActive = dt.IsActive,
-                        CreatedAt = dt.CreatedAt
-                    })
-                    .ToList();
-                return Ok(documentTypes);
+                var documentTypeDtos = documentTypes.Select(dt => new DocumentTypeDto
+                {
+                    Id = dt.Id,
+                    Name = dt.Name,
+                    Description = dt.Description,
+                    AllowedExtensions = JsonSerializer.Deserialize<List<string>>(dt.AllowedExtensions) ?? new List<string>(),
+                    MaxFileSize = dt.MaxFileSize,
+                    CompanyId = dt.CompanyId,
+                    CompanyName = dt.Company != null ? dt.Company.Name : null,
+                    IsActive = dt.IsActive,
+                    CreatedAt = dt.CreatedAt
+                }).ToList();
+                
+                return Ok(documentTypeDtos);
             }
             catch (Exception ex)
             {
