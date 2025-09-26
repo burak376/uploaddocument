@@ -21,19 +21,33 @@ builder.Host.UseSerilog();
 // Add services to the container.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    // Use connection string from appsettings
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    // Get connection string from environment or appsettings
+    var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") 
+                          ?? builder.Configuration.GetConnectionString("DefaultConnection");
     
     if (!string.IsNullOrEmpty(connectionString))
     {
-        // Use MySQL with extended timeouts
-        options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), mysqlOptions =>
+        try
         {
-            mysqlOptions.CommandTimeout(300); // 5 minutes command timeout
-        });
+            // Use MySQL with extended timeouts and error handling
+            options.UseMySql(connectionString, ServerVersion.Parse("8.0.0-mysql"), mysqlOptions =>
+            {
+                mysqlOptions.CommandTimeout(300); // 5 minutes command timeout
+                mysqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 3,
+                    maxRetryDelay: TimeSpan.FromSeconds(10),
+                    errorNumbersToAdd: null);
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to configure MySQL, falling back to InMemory database");
+            options.UseInMemoryDatabase("DocumentManagementDB");
+        }
     }
     else
     {
+        Log.Warning("No connection string found, using InMemory database");
         // Fallback to InMemory for testing
         options.UseInMemoryDatabase("DocumentManagementDB");
     }
@@ -152,26 +166,32 @@ app.MapControllers();
 // Database initialization - non-blocking
 _ = Task.Run(async () =>
 {
-    await Task.Delay(2000); // Wait 2 seconds for app to start
+    await Task.Delay(5000); // Wait 5 seconds for app to start
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     try
     {
-        if (app.Environment.IsDevelopment())
+        // Test database connection first
+        await context.Database.CanConnectAsync();
+        Log.Information("Database connection successful");
+        
+        if (context.Database.IsInMemory())
         {
-            await context.Database.EnsureCreatedAsync();
-        }
-        else
-        {
-            // For InMemory database, ensure created and seed data
+            Log.Information("Using InMemory database, ensuring created and seeding data");
             await context.Database.EnsureCreatedAsync();
             await SeedInMemoryDataAsync(context);
         }
+        else
+        {
+            Log.Information("Using MySQL database, ensuring created");
+            await context.Database.EnsureCreatedAsync();
+        }
+        
         Log.Information("Database initialized successfully");
     }
     catch (Exception ex)
     {
-        Log.Warning(ex, "Database initialization failed, will retry on first request");
+        Log.Error(ex, "Database initialization failed, will retry on first request");
     }
 });
 
