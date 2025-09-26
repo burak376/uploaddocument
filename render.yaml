@@ -12,7 +12,7 @@ services:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
       - key: ConnectionStrings__DefaultConnection
-        value: Server=sql7.freesqldatabase.com;Database=sql7800199;User=sql7800199;Password=xa3L1w7xpG;Port=3306;SslMode=None;
+        value: Server=sql7.freesqldatabase.com;Database=sql7800199;User=sql7800199;Password=xa3L1w7xpG;Port=3306;SslMode=None;AllowPublicKeyRetrieval=true;ConnectionTimeout=60;
       - key: JwtSettings__SecretKey
         value: FreePlatform
       - key: JwtSettings__Issuer
