@@ -151,13 +151,14 @@ builder.Services.AddSwaggerGen(c =>
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer"
     });
+                            mysqlOptions.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(30), null);
 
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
+                        // Enable retry for transient failures
+                        mysqlOptions.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(30), null);
                 {
                     Type = ReferenceType.SecurityScheme,
                     Id = "Bearer"
@@ -193,14 +194,34 @@ app.MapControllers();
 // Database initialization and seeding - non-blocking
 _ = Task.Run(async () =>
 {
-    await Task.Delay(10000); // Wait 10 seconds for app to start
+    await Task.Delay(15000); // Wait 15 seconds for app to start
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     try
     {
         // Test database connection first
         Log.Information("Testing database connection...");
-        await context.Database.CanConnectAsync();
+        
+        // Try connection with retry
+        var maxRetries = 3;
+        var retryDelay = TimeSpan.FromSeconds(5);
+        
+        for (int i = 0; i < maxRetries; i++)
+        {
+            try
+            {
+                await context.Database.CanConnectAsync();
+                Log.Information("Database connection test successful on attempt {Attempt}", i + 1);
+                break;
+            }
+            catch (Exception ex) when (i < maxRetries - 1)
+            {
+                Log.Warning("Database connection attempt {Attempt} failed: {Error}. Retrying in {Delay} seconds...", 
+                    i + 1, ex.Message, retryDelay.TotalSeconds);
+                await Task.Delay(retryDelay);
+            }
+        }
+        
         Log.Information("Database connection test successful");
         
         // Always ensure database is created and seeded
