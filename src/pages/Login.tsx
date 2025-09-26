@@ -120,6 +120,14 @@ const Login: React.FC = () => {
           </form>
 
           <div className="mt-8 pt-6 border-t border-gray-200">
+            <div className="text-sm text-gray-600">
+              <p className="font-medium mb-2">Demo Hesaplar:</p>
+              <div className="space-y-1">
+                <p><span className="font-medium">Super Admin:</span> superadmin / 12345</p>
+                <p><span className="font-medium">Firma Admin:</span> bugibo_admin / 12345</p>
+                <p><span className="font-medium">Kullanıcı:</span> burak / 12345</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

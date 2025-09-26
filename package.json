@@ -11,6 +11,7 @@
     "start:both": "concurrently \"npm run dev:frontend\" \"cd DocumentManagementAPI && dotnet run\"",
     "build": "vite build",
     "build:netlify": "npm install && npm run build",
+    "build:netlify": "npm install && npm run build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
