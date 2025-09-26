@@ -18,17 +18,20 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Add services to the container.
+// Use In-Memory Database for now (to test if app works)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), mysqlOptions =>
+    if (builder.Environment.IsDevelopment())
     {
-        mysqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 3,
-            maxRetryDelay: TimeSpan.FromSeconds(10),
-            errorNumbersToAdd: null);
-        mysqlOptions.CommandTimeout(60);
-    });
+        // Local development - use MySQL
+        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+        options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+    }
+    else
+    {
+        // Production - use In-Memory for now
+        options.UseInMemoryDatabase("DocumentManagementDB");
+    }
 });
 
 // JWT Authentication
@@ -143,11 +146,21 @@ app.MapControllers();
 // Database initialization - non-blocking
 _ = Task.Run(async () =>
 {
+    await Task.Delay(2000); // Wait 2 seconds for app to start
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     try
     {
-        await context.Database.EnsureCreatedAsync();
+        if (app.Environment.IsDevelopment())
+        {
+            await context.Database.EnsureCreatedAsync();
+        }
+        else
+        {
+            // For InMemory database, ensure created and seed data
+            await context.Database.EnsureCreatedAsync();
+            await SeedInMemoryDataAsync(context);
+        }
         Log.Information("Database initialized successfully");
     }
     catch (Exception ex)
@@ -155,6 +168,66 @@ _ = Task.Run(async () =>
         Log.Warning(ex, "Database initialization failed, will retry on first request");
     }
 });
+
+// Seed data for InMemory database
+async Task SeedInMemoryDataAsync(ApplicationDbContext context)
+{
+    if (await context.Companies.AnyAsync()) return; // Already seeded
+    
+    // Seed Company
+    var company = new Company
+    {
+        Id = 1,
+        Name = "Bugibo Yazılım",
+        TaxNumber = "1234567890",
+        Address = "İstanbul, Türkiye",
+        Phone = "0212 123 45 67",
+        Email = "info@bugibo.com",
+        IsActive = true,
+        CreatedAt = DateTime.UtcNow,
+        UpdatedAt = DateTime.UtcNow
+    };
+    context.Companies.Add(company);
+    await context.SaveChangesAsync();
+
+    // Seed Users
+    var users = new[]
+    {
+        new User
+        {
+            Id = 1,
+            Username = "superadmin",
+            FirstName = "Super",
+            LastName = "Admin",
+            Email = "admin@system.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("12345"),
+            Role = UserRole.SuperAdmin,
+            CompanyId = null,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        },
+        new User
+        {
+            Id = 2,
+            Username = "bugibo_admin",
+            FirstName = "Bugibo",
+            LastName = "Admin",
+            Email = "admin@bugibo.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("12345"),
+            Role = UserRole.CompanyAdmin,
+            CompanyId = 1,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        }
+    };
+    
+    context.Users.AddRange(users);
+    await context.SaveChangesAsync();
+    
+    Log.Information("InMemory database seeded successfully");
+}
 
 Log.Information("Document Management API starting up...");
 

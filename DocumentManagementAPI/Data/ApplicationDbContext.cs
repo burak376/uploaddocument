@@ -74,6 +74,9 @@ namespace DocumentManagementAPI.Data
 
         private void SeedData(ModelBuilder modelBuilder)
         {
+            // Only seed data if not using InMemory database in production
+            // (InMemory will be seeded at runtime)
+            
             // Seed Company
             modelBuilder.Entity<Company>().HasData(
                 new Company
