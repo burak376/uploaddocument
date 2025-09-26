@@ -1,5 +1,6 @@
 using DocumentManagementAPI.Data;
 using DocumentManagementAPI.Services;
+using DocumentManagementAPI.Services;
 using DocumentManagementAPI.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -29,7 +30,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     {
         try
         {
-            // Use MySQL with simplified configuration
+            // Use TiDB Cloud (MySQL compatible) with simplified configuration
             options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), mysqlOptions =>
             {
                 mysqlOptions.CommandTimeout(60); // 1 minute command timeout
@@ -37,11 +38,11 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 // mysqlOptions.EnableRetryOnFailure();
             });
             
-            Log.Information("MySQL configuration applied successfully");
+            Log.Information("TiDB Cloud configuration applied successfully");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to configure MySQL, falling back to InMemory database");
+            Log.Error(ex, "Failed to configure TiDB Cloud, falling back to InMemory database");
             options.UseInMemoryDatabase("DocumentManagementDB");
         }
     }
@@ -163,7 +164,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Database initialization - non-blocking
+// Database initialization and seeding - non-blocking
 _ = Task.Run(async () =>
 {
     await Task.Delay(5000); // Wait 5 seconds for app to start
@@ -173,25 +174,18 @@ _ = Task.Run(async () =>
     {
         // Test database connection first
         await context.Database.CanConnectAsync();
-        Log.Information("Database connection successful");
+        Log.Information("TiDB Cloud connection successful");
         
-        if (context.Database.IsInMemory())
-        {
-            Log.Information("Using InMemory database, ensuring created and seeding data");
-            await context.Database.EnsureCreatedAsync();
-            await SeedInMemoryDataAsync(context);
-        }
-        else
-        {
-            Log.Information("Using MySQL database, ensuring created");
-            await context.Database.EnsureCreatedAsync();
-        }
+        // Always ensure database is created and seeded
+        Log.Information("Ensuring database schema and seeding data...");
+        await context.Database.EnsureCreatedAsync();
+        await SeedDatabaseAsync(context);
         
         Log.Information("Database initialized successfully");
     }
     catch (Exception ex)
     {
-        Log.Error(ex, "Database initialization failed, will retry on first request");
+        Log.Error(ex, "Database initialization failed");
     }
 });
 
@@ -210,10 +204,16 @@ finally
     Log.CloseAndFlush();
 }
 
-// Seed data for InMemory database
-async Task SeedInMemoryDataAsync(ApplicationDbContext context)
+// Seed data for database
+async Task SeedDatabaseAsync(ApplicationDbContext context)
 {
-    if (await context.Companies.AnyAsync()) return; // Already seeded
+    if (await context.Companies.AnyAsync()) 
+    {
+        Log.Information("Database already contains data, skipping seed");
+        return; // Already seeded
+    }
+    
+    Log.Information("Seeding database with initial data...");
     
     // Seed Company
     var company = new Company
@@ -229,6 +229,7 @@ async Task SeedInMemoryDataAsync(ApplicationDbContext context)
         UpdatedAt = DateTime.UtcNow
     };
     context.Companies.Add(company);
+    Log.Information("Added company: {CompanyName}", company.Name);
     await context.SaveChangesAsync();
 
     // Seed Users
@@ -281,5 +282,6 @@ async Task SeedInMemoryDataAsync(ApplicationDbContext context)
     context.Users.AddRange(users);
     await context.SaveChangesAsync();
     
-    Log.Information("InMemory database seeded successfully");
+    Log.Information("Database seeded successfully with {UserCount} users and {CompanyCount} companies", 
+        users.Length, 1);
 }
