@@ -21,22 +21,35 @@ builder.Host.UseSerilog();
 // Add services to the container.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    if (builder.Environment.IsDevelopment())
+    // Check if we have environment variables for database connection
+    var dbServer = Environment.GetEnvironmentVariable("DB_SERVER");
+    var dbName = Environment.GetEnvironmentVariable("DB_NAME");
+    var dbUser = Environment.GetEnvironmentVariable("DB_USER");
+    var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
+    
+    if (!string.IsNullOrEmpty(dbServer) && !string.IsNullOrEmpty(dbName) && 
+        !string.IsNullOrEmpty(dbUser) && !string.IsNullOrEmpty(dbPassword))
     {
-        // Local development - use MySQL
+        // Use environment variables for database connection
+        var connectionString = $"Server={dbServer};Database={dbName};User={dbUser};Password={dbPassword};Port=3306;SslMode=None;";
+        options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+    }
+    else if (builder.Environment.IsDevelopment())
+    {
+        // Local development - use appsettings
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
         options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
     }
     else
     {
-        // Production - use In-Memory for now
+        // Production fallback - use In-Memory
         options.UseInMemoryDatabase("DocumentManagementDB");
     }
 });
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = jwtSettings["SecretKey"];
+var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") ?? jwtSettings["SecretKey"];
 
 builder.Services.AddAuthentication(options =>
 {
