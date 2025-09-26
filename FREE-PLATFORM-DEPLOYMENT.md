@@ -5,28 +5,23 @@ Bu rehber projeyi tamamen ücretsiz platformlarda nasıl yayınlayacağınızı 
 ## 🎯 **Ücretsiz Platform Kombinasyonu**
 
 ### **Frontend**: Netlify/Vercel (Ücretsiz)
-### **Backend**: Railway (Ücretsiz $5 kredi/ay)
-### **Database**: FreeSQLDatabase (Ücretsiz 100MB MySQL)
+### **Backend**: Render (Ücretsiz 750 saat/ay)
+### **Database**: FreeSQLDatabase (Ücretsiz 5MB MySQL)
 
 ---
 
-## 📋 **1. Database - FreeSQLDatabase**
+## 📋 **1. Database - FreeSQLDatabase (Hazır)**
 
-### **A. Hesap Oluştur**
-1. **https://www.freesqldatabase.com** adresine git
-2. **"Create Free MySQL Database"** tıkla
-3. Form doldur:
-   - **Database Name**: `freedb_documentmgmt`
-   - **Username**: `freedb_docuser`
-   - **Password**: Güçlü şifre oluştur
+### **A. Mevcut Database Bilgileri**
+Görüntüdeki bilgilere göre database zaten hazır:
 
 ### **B. Database Bilgileri**
 ```
 Server: sql.freedb.tech
 Port: 3306
-Database: freedb_documentmgmt
-Username: freedb_docuser
-Password: [your_password]
+Database: sql7800199
+Username: sql7800199
+Password: xa3L1w7xpG
 ```
 
 ### **C. Database Oluştur**
@@ -49,39 +44,33 @@ CREATE TABLE IF NOT EXISTS Companies (
 
 ---
 
-## 🚀 **2. Backend - Railway**
+## 🚀 **2. Backend - Render (Tamamen Ücretsiz)**
 
-### **A. Railway Hesabı**
-1. **https://railway.app** adresine git
+### **A. Render Hesabı**
+1. **https://render.com** adresine git
 2. **GitHub ile giriş** yap
-3. **$5 ücretsiz kredi** al
+3. **750 saat/ay ücretsiz** tier
 
 ### **B. Proje Deploy**
 ```bash
-# Railway CLI yükle
-npm install -g @railway/cli
-
-# Login
-railway login
-
-# Proje klasöründe
-railway init
-
-# Deploy
-railway up
+# GitHub repo'yu Render'a bağla
+# 1. New Web Service
+# 2. Connect GitHub repo
+# 3. Docker environment seç
+# 4. render.yaml dosyası otomatik algılanır
 ```
 
 ### **C. Environment Variables**
-Railway Dashboard → Variables:
+Render Dashboard → Environment:
 ```
 ASPNETCORE_ENVIRONMENT=Production
-ConnectionStrings__DefaultConnection=Server=sql.freedb.tech;Database=freedb_documentmgmt;User=freedb_docuser;Password=YOUR_PASSWORD;Port=3306;SslMode=Required;
-JwtSettings__SecretKey=production-super-secure-secret-key-minimum-32-characters-required-change-this
+ConnectionStrings__DefaultConnection=Server=sql.freedb.tech;Database=sql7800199;User=sql7800199;Password=xa3L1w7xpG;Port=3306;SslMode=Required;
+JwtSettings__SecretKey=FreePlatform-SecureKey-32Chars-Min-Change-This-Production-Key-2024
 ```
 
 ### **D. Custom Domain (Opsiyonel)**
 ```
-your-app-name.railway.app → API URL'in bu olacak
+your-app-name.onrender.com → API URL'in bu olacak
 ```
 
 ---
@@ -98,7 +87,7 @@ Node version: 18
 
 ### **B. Environment Variables**
 ```
-VITE_API_BASE_URL=https://your-app-name.railway.app/api
+VITE_API_BASE_URL=https://your-app-name.onrender.com/api
 ```
 
 ### **C. netlify.toml**
@@ -122,7 +111,7 @@ VITE_API_BASE_URL=https://your-app-name.railway.app/api
 ```csharp
 policy.WithOrigins(
     "https://*.netlify.app",
-    "https://*.vercel.app",
+    "https://*.render.com",
     "http://localhost:5173"
 )
 ```
@@ -131,7 +120,7 @@ policy.WithOrigins(
 Ücretsiz platformlar için dosya boyutunu düşür:
 ```json
 "FileUpload": {
-  "MaxFileSize": 52428800  // 50MB
+  "MaxFileSize": 10485760  // 10MB
 }
 ```
 
@@ -139,7 +128,7 @@ policy.WithOrigins(
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=sql.freedb.tech;Database=freedb_documentmgmt;User=freedb_docuser;Password=YOUR_PASSWORD;Port=3306;SslMode=Required;"
+    "DefaultConnection": "Server=sql.freedb.tech;Database=sql7800199;User=sql7800199;Password=xa3L1w7xpG;Port=3306;SslMode=Required;"
   }
 }
 ```
@@ -161,12 +150,12 @@ dotnet ef migrations script > migration.sql
 
 ### **Adım 2: Backend Deploy**
 ```bash
-# Railway'e push
+# Render'a push (otomatik deploy)
 git add .
-git commit -m "Deploy to Railway"
+git commit -m "Deploy to Render"
 git push origin main
 
-# Railway otomatik deploy eder
+# Render otomatik deploy eder
 ```
 
 ### **Adım 3: Frontend Deploy**
@@ -181,14 +170,14 @@ git push origin main
 
 ### **Tamamen Ücretsiz**
 - **Netlify**: Ücretsiz (100GB bandwidth)
-- **Railway**: $5 kredi/ay (yeterli küçük projeler için)
-- **FreeSQLDatabase**: Ücretsiz (100MB)
+- **Render**: Ücretsiz (750 saat/ay)
+- **FreeSQLDatabase**: Ücretsiz (5MB)
 - **Domain**: Subdomain ücretsiz
 - **SSL**: Otomatik ücretsiz
 
 ### **Limitler**
-- **Database**: 100MB limit
-- **Railway**: $5 kredi bitince duraklama
+- **Database**: 5MB limit
+- **Render**: 750 saat/ay sonra duraklama
 - **File Storage**: Geçici (restart'ta silinir)
 
 ---
@@ -196,7 +185,7 @@ git push origin main
 ## 🎯 **Alternatif Ücretsiz Seçenekler**
 
 ### **Backend Alternatifleri**
-- **Render**: 750 saat/ay ücretsiz
+- **Railway**: $5 kredi/ay
 - **Heroku**: 550 saat/ay ücretsiz (deprecated)
 - **Fly.io**: Küçük uygulamalar ücretsiz
 
@@ -213,7 +202,7 @@ git push origin main
 
 ## 🚨 **Önemli Notlar**
 
-1. **File Storage**: Railway'de dosyalar geçici, AWS S3 entegrasyonu gerekli
+1. **File Storage**: Render'da dosyalar geçici, AWS S3 entegrasyonu gerekli
 2. **Database Backup**: Manuel backup yapın
 3. **SSL**: Otomatik sağlanır
 4. **Custom Domain**: Ücretli domain gerekebilir
@@ -232,16 +221,16 @@ policy.WithOrigins("https://*.netlify.app")
 ### **Database Connection**
 ```bash
 # Connection string test et
-mysql -h sql.freedb.tech -P 3306 -u freedb_docuser -p freedb_documentmgmt
+mysql -h sql.freedb.tech -P 3306 -u sql7800199 -p sql7800199
 ```
 
-### **Railway Deploy Hatası**
+### **Render Deploy Hatası**
 ```bash
 # Logs kontrol et
-railway logs
+# Render dashboard'dan logs kontrol et
 
 # Restart
-railway restart
+# Render dashboard'dan restart
 ```
 
 Bu rehberle projenizi tamamen ücretsiz platformlarda çalıştırabilirsiniz! 🎉

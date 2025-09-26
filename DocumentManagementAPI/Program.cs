@@ -61,7 +61,8 @@ builder.Services.AddCors(options =>
             "http://localhost:3000",
             "https://*.netlify.app",
             "https://*.vercel.app",
-            "https://*.railway.app",
+            "https://*.render.com",
+            "https://*.fly.dev",
             "https://yourdomain.com"
         )
               .AllowAnyHeader()
