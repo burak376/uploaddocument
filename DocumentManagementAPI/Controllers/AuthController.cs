@@ -23,13 +23,10 @@ namespace DocumentManagementAPI.Controllers
         {
             try
             {
-                _logger.LogInformation("Login request received for user: {Username}", loginRequest.Username);
-                
                 var result = await _authService.LoginAsync(loginRequest);
                 
                 if (result == null)
                 {
-                    _logger.LogWarning("Login failed for user: {Username}", loginRequest.Username);
                     return Unauthorized(new { message = "Invalid username or password" });
                 }
 
@@ -39,7 +36,7 @@ namespace DocumentManagementAPI.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during login for user {Username}", loginRequest.Username);
-                return StatusCode(500, new { message = "An error occurred during login", error = ex.Message });
+                return StatusCode(500, new { message = "An error occurred during login" });
             }
         }
 

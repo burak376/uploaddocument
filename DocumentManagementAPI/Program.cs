@@ -10,7 +10,7 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ---- Serilog ----
+// Serilog configuration
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .WriteTo.Console()
@@ -18,33 +18,25 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
-// ---- EF Core + Pomelo(MySqlConnector) ----
+// Add services to the container.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    var cs = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-             ?? builder.Configuration.GetConnectionString("DefaultConnection");
-
-    // Parolayı loglama
-    if (!string.IsNullOrWhiteSpace(cs))
-        Log.Information("DB connection string loaded (password hidden).");
-
-    // TiDB, MySQL 8 uyumlu
-    var serverVersion = new MySqlServerVersion(new Version(8, 0, 32));
-
-    options.UseMySql(cs, serverVersion, mySqlOptions =>
+    if (builder.Environment.IsDevelopment())
     {
-        mySqlOptions.CommandTimeout(60);
-        // Transient hatalara karşı yeniden dene
-        mySqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 6,
-            maxRetryDelay: TimeSpan.FromSeconds(15),
-            errorNumbersToAdd: null);
-    });
+        // Local development - use MySQL
+        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+        options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+    }
+    else
+    {
+        // Production - use In-Memory for now
+        options.UseInMemoryDatabase("DocumentManagementDB");
+    }
 });
 
-// ---- JWT ----
-var jwtSection = builder.Configuration.GetSection("JwtSettings");
-var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") ?? jwtSection["SecretKey"];
+// JWT Authentication
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = jwtSettings["SecretKey"];
 
 builder.Services.AddAuthentication(options =>
 {
@@ -59,8 +51,8 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSection["Issuer"],
-        ValidAudience = jwtSection["Audience"],
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidAudience = jwtSettings["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!)),
         ClockSkew = TimeSpan.Zero
     };
@@ -68,38 +60,33 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// ---- CORS ----
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy
-            // .WithOrigins tek tek eşleşir; wildcard gerekirse SetIsOriginAllowed kullan
-            .SetIsOriginAllowed(origin =>
-            {
-                try
-                {
-                    var uri = new Uri(origin);
-                    return uri.Host.Equals("localhost")
-                           || uri.Host.EndsWith("netlify.app")
-                           || uri.Host.Contains("render.com");
-                }
-                catch { return false; }
-            })
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+        policy.WithOrigins(
+            "http://localhost:5173", 
+            "http://localhost:3000",
+            "https://*.netlify.app",
+            "https://68d6976--dokumanyukleme.netlify.app",
+            "https://dokumanyukleme.netlify.app",
+            "https://uploaddocumentbe.onrender.com"
+        )
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
-// ---- Services ----
+// Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IFileService, FileService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// ---- Swagger ----
+// Swagger configuration
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
@@ -109,10 +96,10 @@ builder.Services.AddSwaggerGen(c =>
         Description = "API for Document Management System"
     });
 
-    // JWT için Swagger ayarı
+    // JWT Bearer token configuration for Swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "Bearer şeması ile JWT. Örn: Bearer {token}",
+        Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token in the text input below.",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
@@ -137,54 +124,73 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// ---- Middleware ----
+// Configure the HTTP request pipeline.
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Document Management API V1");
-    c.RoutePrefix = string.Empty;
+    c.RoutePrefix = string.Empty; // Swagger UI at root
 });
 
+// Health check endpoint
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
 app.UseHttpsRedirection();
+
 app.UseCors("AllowReactApp");
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
-// ---- DB init & seed (retry'li execution strategy içinde) ----
+// Database initialization - non-blocking
 _ = Task.Run(async () =>
 {
+    await Task.Delay(2000); // Wait 2 seconds for app to start
     using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-
-    var strategy = db.Database.CreateExecutionStrategy();
-    await strategy.ExecuteAsync(async () =>
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    try
     {
-        Log.Information("Applying migrations...");
-        await db.Database.MigrateAsync();
-
-        Log.Information("Seeding data if needed...");
-        await SeedDatabaseAsync(db);
-    });
-
-    Log.Information("Database ready.");
+        if (app.Environment.IsDevelopment())
+        {
+            await context.Database.EnsureCreatedAsync();
+        }
+        else
+        {
+            // For InMemory database, ensure created and seed data
+            await context.Database.EnsureCreatedAsync();
+            await SeedInMemoryDataAsync(context);
+        }
+        Log.Information("Database initialized successfully");
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Database initialization failed, will retry on first request");
+    }
 });
 
 Log.Information("Document Management API starting up...");
-await app.RunAsync();
 
-// ---- Seed ----
-static async Task SeedDatabaseAsync(ApplicationDbContext context)
+try
 {
-    if (await context.Companies.AnyAsync())
-    {
-        Log.Information("Database already seeded.");
-        return;
-    }
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
+// Seed data for InMemory database
+async Task SeedInMemoryDataAsync(ApplicationDbContext context)
+{
+    if (await context.Companies.AnyAsync()) return; // Already seeded
+    
+    // Seed Company
     var company = new Company
     {
         Id = 1,
@@ -200,6 +206,7 @@ static async Task SeedDatabaseAsync(ApplicationDbContext context)
     context.Companies.Add(company);
     await context.SaveChangesAsync();
 
+    // Seed Users
     var users = new[]
     {
         new User
@@ -245,9 +252,9 @@ static async Task SeedDatabaseAsync(ApplicationDbContext context)
             UpdatedAt = DateTime.UtcNow
         }
     };
-
+    
     context.Users.AddRange(users);
     await context.SaveChangesAsync();
-
-    Log.Information("Seed completed: {UserCount} users, {CompanyCount} companies", users.Length, 1);
+    
+    Log.Information("InMemory database seeded successfully");
 }

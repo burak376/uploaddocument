@@ -74,8 +74,8 @@ namespace DocumentManagementAPI.Data
 
         private void SeedData(ModelBuilder modelBuilder)
         {
-            // Seed data will be handled at runtime in Program.cs
-            // This ensures data is seeded regardless of database type
+            // Only seed data if not using InMemory database in production
+            // (InMemory will be seeded at runtime)
             
             // Seed Company
             modelBuilder.Entity<Company>().HasData(
