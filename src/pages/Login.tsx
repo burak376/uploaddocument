@@ -120,6 +120,8 @@ const Login: React.FC = () => {
           </form>
 
           <div className="mt-8 pt-6 border-t border-gray-200">
+          </div>
+        </div>
       </div>
     </div>
   );
