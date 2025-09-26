@@ -21,33 +21,21 @@ builder.Host.UseSerilog();
 // Add services to the container.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    // Check if we have environment variables for database connection (Render deployment)
-    var dbServer = Environment.GetEnvironmentVariable("DB_SERVER") ?? "sql7.freesqldatabase.com";
-    var dbName = Environment.GetEnvironmentVariable("DB_NAME") ?? "sql7800199";
-    var dbUser = Environment.GetEnvironmentVariable("DB_USER") ?? "sql7800199";
-    var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD") ?? "xa3L1w7xpG";
-    var dbPort = Environment.GetEnvironmentVariable("DB_PORT") ?? "3306";
+    // Use connection string from appsettings
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     
-    // Always use MySQL for production/render deployment
-    if (!builder.Environment.IsDevelopment())
+    if (!string.IsNullOrEmpty(connectionString))
     {
-        // Production/Render - use MySQL with FreeSQLDatabase
-        var connectionString = $"Server={dbServer};Database={dbName};User={dbUser};Password={dbPassword};Port={dbPort};SslMode=Required;";
-        options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+        // Use MySQL with extended timeouts
+        options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), mysqlOptions =>
+        {
+            mysqlOptions.CommandTimeout(300); // 5 minutes command timeout
+        });
     }
     else
     {
-        // Local development - use appsettings or InMemory
-        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-        if (!string.IsNullOrEmpty(connectionString))
-        {
-            options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
-        }
-        else
-        {
-            // Fallback to InMemory for development
-            options.UseInMemoryDatabase("DocumentManagementDB");
-        }
+        // Fallback to InMemory for testing
+        options.UseInMemoryDatabase("DocumentManagementDB");
     }
 });
 
