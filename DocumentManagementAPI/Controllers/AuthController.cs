@@ -1,6 +1,7 @@
 using DocumentManagementAPI.DTOs;
 using DocumentManagementAPI.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace DocumentManagementAPI.Controllers
 {
@@ -38,5 +39,12 @@ namespace DocumentManagementAPI.Controllers
                 return StatusCode(500, new { message = "An error occurred during login" });
             }
         }
+    }
+
+    [HttpGet("health")]
+    [AllowAnonymous]
+    public ActionResult Health()
+    {
+        return Ok(new { status = "healthy", timestamp = DateTime.UtcNow });
     }
 }
