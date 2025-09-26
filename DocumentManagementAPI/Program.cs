@@ -22,34 +22,31 @@ builder.Host.UseSerilog();
 // Add services to the container.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    // Get connection string from environment or appsettings
-    var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") 
-                          ?? builder.Configuration.GetConnectionString("DefaultConnection");
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     
     if (!string.IsNullOrEmpty(connectionString))
     {
         try
         {
-            // Use TiDB Cloud (MySQL compatible) with simplified configuration
+            Log.Information("Attempting TiDB Cloud connection...");
             options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), mysqlOptions =>
             {
-                mysqlOptions.CommandTimeout(60); // 1 minute command timeout
-                // Disable retry for debugging
-                // mysqlOptions.EnableRetryOnFailure();
+                mysqlOptions.CommandTimeout(120);
+                mysqlOptions.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(10), null);
             });
             
-            Log.Information("TiDB Cloud configuration applied successfully");
+            Log.Information("TiDB Cloud MySQL configuration applied successfully");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to configure TiDB Cloud, falling back to InMemory database");
+            Log.Error(ex, "Failed to configure TiDB Cloud: {ErrorMessage}", ex.Message);
+            Log.Information("Falling back to InMemory database for development");
             options.UseInMemoryDatabase("DocumentManagementDB");
         }
     }
     else
     {
-        Log.Error("No connection string found, using InMemory database");
-        // Fallback to InMemory for testing
+        Log.Warning("No connection string found, using InMemory database");
         options.UseInMemoryDatabase("DocumentManagementDB");
     }
 });
