@@ -22,8 +22,6 @@ namespace DocumentManagementAPI.Services
 
         public async Task<LoginResponseDto?> LoginAsync(LoginRequestDto loginRequest)
         {
-            try
-            {
                 var user = await _context.Users
                     .Include(u => u.Company)
                     .FirstOrDefaultAsync(u => u.Username == loginRequest.Username && u.IsActive);
@@ -53,12 +51,6 @@ namespace DocumentManagementAPI.Services
                     Token = token,
                     User = userDto
                 };
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Login error: {ex.Message}");
-                return null;
-            }
         }
 
         public string GenerateJwtToken(UserDto user)
