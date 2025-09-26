@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useEffect } from 'react';
-import { Building2, Plus, Edit, Trash2, Users } from 'lucide-react';
+import { Building2, Plus, CreditCard as Edit, Trash2, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
 import { companyService, CreateCompanyRequest } from '../services/companyService';
