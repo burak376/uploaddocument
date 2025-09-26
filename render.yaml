@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: document-management-api
+    name: uploaddocumentbe
     env: docker
     dockerfilePath: ./DocumentManagementAPI/Dockerfile
     dockerContext: ./DocumentManagementAPI

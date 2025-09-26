@@ -42,7 +42,7 @@ Bu rehber, Document Management API'yi Render platformunda tamamen ücretsiz olar
 
 ### **C. Service Ayarları**
 ```
-Name: document-management-api
+Name: uploaddocumentbe
 Region: Oregon (US West)
 Branch: main
 Root Directory: DocumentManagementAPI

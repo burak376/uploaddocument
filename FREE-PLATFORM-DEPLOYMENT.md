@@ -87,7 +87,7 @@ Node version: 18
 
 ### **B. Environment Variables**
 ```
-VITE_API_BASE_URL=https://your-app-name.onrender.com/api
+VITE_API_BASE_URL=https://uploaddocumentbe.onrender.com/api
 ```
 
 ### **C. netlify.toml**
