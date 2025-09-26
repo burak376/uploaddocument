@@ -1,7 +1,6 @@
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 WORKDIR /app
-EXPOSE 80
-EXPOSE 443
+EXPOSE $PORT
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
@@ -21,4 +20,5 @@ COPY --from=publish /app/publish .
 # Create directories for uploads and logs
 RUN mkdir -p uploads logs
 
-ENTRYPOINT ["dotnet", "DocumentManagementAPI.dll"]
+# Railway uses PORT environment variable
+CMD ASPNETCORE_URLS=http://*:$PORT dotnet DocumentManagementAPI.dll

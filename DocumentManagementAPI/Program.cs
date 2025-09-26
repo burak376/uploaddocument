@@ -59,7 +59,9 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
             "http://localhost:5173", 
             "http://localhost:3000",
-            "https://your-netlify-site.netlify.app",
+            "https://*.netlify.app",
+            "https://*.vercel.app",
+            "https://*.railway.app",
             "https://yourdomain.com"
         )
               .AllowAnyHeader()
