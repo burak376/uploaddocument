@@ -22,26 +22,55 @@ builder.Host.UseSerilog();
 // Add services to the container.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    // Try multiple connection string sources
+    var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") 
+                          ?? builder.Configuration.GetConnectionString("DefaultConnection");
+    
+    Log.Information("Using connection string: {ConnectionString}", 
+        connectionString?.Replace("Password=XiYk50BTwrsVV110", "Password=***"));
     
     if (!string.IsNullOrEmpty(connectionString))
     {
         try
         {
             Log.Information("Attempting TiDB Cloud connection...");
-            options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), mysqlOptions =>
+            
+            // Try with fixed server version first
+            var serverVersion = new MySqlServerVersion(new Version(8, 0, 0));
+            options.UseMySql(connectionString, serverVersion, mysqlOptions =>
             {
-                mysqlOptions.CommandTimeout(120);
-                mysqlOptions.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(10), null);
+                mysqlOptions.CommandTimeout(60);
+                // Disable retry for debugging
+                // mysqlOptions.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(10), null);
             });
             
             Log.Information("TiDB Cloud MySQL configuration applied successfully");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to configure TiDB Cloud: {ErrorMessage}", ex.Message);
-            Log.Information("Falling back to InMemory database for development");
-            options.UseInMemoryDatabase("DocumentManagementDB");
+            Log.Error(ex, "Failed to configure TiDB Cloud: {ErrorMessage}. Inner Exception: {InnerException}", 
+                ex.Message, ex.InnerException?.Message);
+            
+            // Try alternative connection string format
+            try
+            {
+                Log.Information("Trying alternative connection format...");
+                var altConnectionString = "server=gateway01.eu-central-1.prod.aws.tidbcloud.com;port=4000;database=test;uid=oWWCakYcn8Js91E.root;pwd=XiYk50BTwrsVV110;sslmode=required;";
+                
+                var serverVersion = new MySqlServerVersion(new Version(8, 0, 0));
+                options.UseMySql(altConnectionString, serverVersion, mysqlOptions =>
+                {
+                    mysqlOptions.CommandTimeout(60);
+                });
+                
+                Log.Information("Alternative connection format worked!");
+            }
+            catch (Exception altEx)
+            {
+                Log.Error(altEx, "Alternative connection also failed: {ErrorMessage}", altEx.Message);
+                Log.Information("Falling back to InMemory database");
+                options.UseInMemoryDatabase("DocumentManagementDB");
+            }
         }
     }
     else
@@ -164,14 +193,15 @@ app.MapControllers();
 // Database initialization and seeding - non-blocking
 _ = Task.Run(async () =>
 {
-    await Task.Delay(5000); // Wait 5 seconds for app to start
+    await Task.Delay(10000); // Wait 10 seconds for app to start
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     try
     {
         // Test database connection first
+        Log.Information("Testing database connection...");
         await context.Database.CanConnectAsync();
-        Log.Information("TiDB Cloud connection successful");
+        Log.Information("Database connection test successful");
         
         // Always ensure database is created and seeded
         Log.Information("Ensuring database schema and seeding data...");
@@ -182,7 +212,7 @@ _ = Task.Run(async () =>
     }
     catch (Exception ex)
     {
-        Log.Error(ex, "Database initialization failed");
+        Log.Error(ex, "Database initialization failed: {ErrorMessage}. Using InMemory fallback.", ex.Message);
     }
 });
 
