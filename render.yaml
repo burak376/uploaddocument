@@ -12,7 +12,7 @@ services:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
       - key: ConnectionStrings__DefaultConnection
-        value: Server=gateway01.eu-central-1.prod.aws.tidbcloud.com;Database=test;User=oWWCakYcn8Js91E.root;Password=XiYk50BTwrsVV110;Port=4000;SslMode=Required;AllowPublicKeyRetrieval=true;ConnectionTimeout=60;DefaultCommandTimeout=120;
+        value: Server=gateway01.eu-central-1.prod.aws.tidbcloud.com;Port=4000;Database=test;User ID=oWWCakYcn8Js91E.root;Password=XiYk50BTwrsVV110;SslMode=VerifyFull;Pooling=true;Keepalive=60;ConnectionTimeout=15;DefaultCommandTimeout=60;
       - key: JWT_SECRET_KEY
         value: FreePlatform-SecureKey-32Chars-Min-Change-This-Production-Key-2024
       - key: JWT_ISSUER

@@ -1,6 +1,5 @@
 using DocumentManagementAPI.Data;
 using DocumentManagementAPI.Services;
-using DocumentManagementAPI.Services;
 using DocumentManagementAPI.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +10,7 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Serilog configuration
+// ---- Serilog ----
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .WriteTo.Console()
@@ -19,70 +18,33 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
-// Add services to the container.
+// ---- EF Core + Pomelo(MySqlConnector) ----
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    // Try multiple connection string sources
-    var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") 
-                          ?? builder.Configuration.GetConnectionString("DefaultConnection");
-    
-    Log.Information("Using connection string: {ConnectionString}", 
-        connectionString?.Replace("Password=XiYk50BTwrsVV110", "Password=***"));
-    
-    if (!string.IsNullOrEmpty(connectionString))
+    var cs = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+             ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+    // Parolayı loglama
+    if (!string.IsNullOrWhiteSpace(cs))
+        Log.Information("DB connection string loaded (password hidden).");
+
+    // TiDB, MySQL 8 uyumlu
+    var serverVersion = new MySqlServerVersion(new Version(8, 0, 32));
+
+    options.UseMySql(cs, serverVersion, mySqlOptions =>
     {
-        try
-        {
-            Log.Information("Attempting TiDB Cloud connection...");
-            
-            // Try with fixed server version first
-            var serverVersion = new MySqlServerVersion(new Version(8, 0, 0));
-            options.UseMySql(connectionString, serverVersion, mysqlOptions =>
-            {
-                mysqlOptions.CommandTimeout(60);
-                // Disable retry for debugging
-                // mysqlOptions.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(10), null);
-            });
-            
-            Log.Information("TiDB Cloud MySQL configuration applied successfully");
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Failed to configure TiDB Cloud: {ErrorMessage}. Inner Exception: {InnerException}", 
-                ex.Message, ex.InnerException?.Message);
-            
-            // Try alternative connection string format
-            try
-            {
-                Log.Information("Trying alternative connection format...");
-                var altConnectionString = "server=gateway01.eu-central-1.prod.aws.tidbcloud.com;port=4000;database=test;uid=oWWCakYcn8Js91E.root;pwd=XiYk50BTwrsVV110;sslmode=required;";
-                
-                var serverVersion = new MySqlServerVersion(new Version(8, 0, 0));
-                options.UseMySql(altConnectionString, serverVersion, mysqlOptions =>
-                {
-                    mysqlOptions.CommandTimeout(60);
-                });
-                
-                Log.Information("Alternative connection format worked!");
-            }
-            catch (Exception altEx)
-            {
-                Log.Error(altEx, "Alternative connection also failed: {ErrorMessage}", altEx.Message);
-                Log.Information("Falling back to InMemory database");
-                options.UseInMemoryDatabase("DocumentManagementDB");
-            }
-        }
-    }
-    else
-    {
-        Log.Warning("No connection string found, using InMemory database");
-        options.UseInMemoryDatabase("DocumentManagementDB");
-    }
+        mySqlOptions.CommandTimeout(60);
+        // Transient hatalara karşı yeniden dene
+        mySqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 6,
+            maxRetryDelay: TimeSpan.FromSeconds(15),
+            errorNumbersToAdd: null);
+    });
 });
 
-// JWT Authentication
-var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") ?? jwtSettings["SecretKey"];
+// ---- JWT ----
+var jwtSection = builder.Configuration.GetSection("JwtSettings");
+var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") ?? jwtSection["SecretKey"];
 
 builder.Services.AddAuthentication(options =>
 {
@@ -97,8 +59,8 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidAudience = jwtSettings["Audience"],
+        ValidIssuer = jwtSection["Issuer"],
+        ValidAudience = jwtSection["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!)),
         ClockSkew = TimeSpan.Zero
     };
@@ -106,33 +68,38 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// CORS
+// ---- CORS ----
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins(
-            "http://localhost:5173", 
-            "http://localhost:3000",
-            "https://*.netlify.app",
-            "https://68d6976--dokumanyukleme.netlify.app",
-            "https://dokumanyukleme.netlify.app",
-            "https://uploaddocumentbe.onrender.com"
-        )
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        policy
+            // .WithOrigins tek tek eşleşir; wildcard gerekirse SetIsOriginAllowed kullan
+            .SetIsOriginAllowed(origin =>
+            {
+                try
+                {
+                    var uri = new Uri(origin);
+                    return uri.Host.Equals("localhost")
+                           || uri.Host.EndsWith("netlify.app")
+                           || uri.Host.Contains("render.com");
+                }
+                catch { return false; }
+            })
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
-// Services
+// ---- Services ----
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IFileService, FileService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// Swagger configuration
+// ---- Swagger ----
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
@@ -142,23 +109,22 @@ builder.Services.AddSwaggerGen(c =>
         Description = "API for Document Management System"
     });
 
-    // JWT Bearer token configuration for Swagger
+    // JWT için Swagger ayarı
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token in the text input below.",
+        Description = "Bearer şeması ile JWT. Örn: Bearer {token}",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer"
     });
-                            mysqlOptions.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(30), null);
 
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
-                        // Enable retry for transient failures
-                        mysqlOptions.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(30), null);
+            {
+                Reference = new OpenApiReference
                 {
                     Type = ReferenceType.SecurityScheme,
                     Id = "Bearer"
@@ -171,99 +137,54 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// ---- Middleware ----
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Document Management API V1");
-    c.RoutePrefix = string.Empty; // Swagger UI at root
+    c.RoutePrefix = string.Empty;
 });
 
-// Health check endpoint
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
 app.UseHttpsRedirection();
-
 app.UseCors("AllowReactApp");
-
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
-// Database initialization and seeding - non-blocking
+// ---- DB init & seed (retry'li execution strategy içinde) ----
 _ = Task.Run(async () =>
 {
-    await Task.Delay(15000); // Wait 15 seconds for app to start
     using var scope = app.Services.CreateScope();
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    try
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+    var strategy = db.Database.CreateExecutionStrategy();
+    await strategy.ExecuteAsync(async () =>
     {
-        // Test database connection first
-        Log.Information("Testing database connection...");
-        
-        // Try connection with retry
-        var maxRetries = 3;
-        var retryDelay = TimeSpan.FromSeconds(5);
-        
-        for (int i = 0; i < maxRetries; i++)
-        {
-            try
-            {
-                await context.Database.CanConnectAsync();
-                Log.Information("Database connection test successful on attempt {Attempt}", i + 1);
-                break;
-            }
-            catch (Exception ex) when (i < maxRetries - 1)
-            {
-                Log.Warning("Database connection attempt {Attempt} failed: {Error}. Retrying in {Delay} seconds...", 
-                    i + 1, ex.Message, retryDelay.TotalSeconds);
-                await Task.Delay(retryDelay);
-            }
-        }
-        
-        Log.Information("Database connection test successful");
-        
-        // Always ensure database is created and seeded
-        Log.Information("Ensuring database schema and seeding data...");
-        await context.Database.EnsureCreatedAsync();
-        await SeedDatabaseAsync(context);
-        
-        Log.Information("Database initialized successfully");
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Database initialization failed: {ErrorMessage}. Using InMemory fallback.", ex.Message);
-    }
+        Log.Information("Applying migrations...");
+        await db.Database.MigrateAsync();
+
+        Log.Information("Seeding data if needed...");
+        await SeedDatabaseAsync(db);
+    });
+
+    Log.Information("Database ready.");
 });
 
 Log.Information("Document Management API starting up...");
+await app.RunAsync();
 
-try
+// ---- Seed ----
+static async Task SeedDatabaseAsync(ApplicationDbContext context)
 {
-    app.Run();
-}
-catch (Exception ex)
-{
-    Log.Fatal(ex, "Application terminated unexpectedly");
-}
-finally
-{
-    Log.CloseAndFlush();
-}
-
-// Seed data for database
-async Task SeedDatabaseAsync(ApplicationDbContext context)
-{
-    if (await context.Companies.AnyAsync()) 
+    if (await context.Companies.AnyAsync())
     {
-        Log.Information("Database already contains data, skipping seed");
-        return; // Already seeded
+        Log.Information("Database already seeded.");
+        return;
     }
-    
-    Log.Information("Seeding database with initial data...");
-    
-    // Seed Company
+
     var company = new Company
     {
         Id = 1,
@@ -277,10 +198,8 @@ async Task SeedDatabaseAsync(ApplicationDbContext context)
         UpdatedAt = DateTime.UtcNow
     };
     context.Companies.Add(company);
-    Log.Information("Added company: {CompanyName}", company.Name);
     await context.SaveChangesAsync();
 
-    // Seed Users
     var users = new[]
     {
         new User
@@ -326,10 +245,9 @@ async Task SeedDatabaseAsync(ApplicationDbContext context)
             UpdatedAt = DateTime.UtcNow
         }
     };
-    
+
     context.Users.AddRange(users);
     await context.SaveChangesAsync();
-    
-    Log.Information("Database seeded successfully with {UserCount} users and {CompanyCount} companies", 
-        users.Length, 1);
+
+    Log.Information("Seed completed: {UserCount} users, {CompanyCount} companies", users.Length, 1);
 }
