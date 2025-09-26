@@ -11,16 +11,8 @@ services:
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
-      - key: DB_SERVER
-        value: sql7.freesqldatabase.com
-      - key: DB_NAME
-        value: sql7800199
-      - key: DB_USER
-        value: sql7800199
-      - key: DB_PASSWORD
-        value: xa3L1w7xpG
-      - key: DB_PORT
-        value: "3306"
+      - key: ConnectionStrings__DefaultConnection
+        value: Server=sql7.freesqldatabase.com;Database=sql7800199;User=sql7800199;Password=xa3L1w7xpG;Port=3306;SslMode=None;AllowPublicKeyRetrieval=true;ConnectionTimeout=30;
       - key: JWT_SECRET_KEY
         value: FreePlatform-SecureKey-32Chars-Min-Change-This-Production-Key-2024
       - key: JWT_ISSUER

@@ -29,25 +29,25 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     {
         try
         {
-            // Use MySQL with extended timeouts and error handling
-            options.UseMySql(connectionString, ServerVersion.Parse("8.0.0-mysql"), mysqlOptions =>
+            // Use MySQL with simplified configuration
+            options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), mysqlOptions =>
             {
-                mysqlOptions.CommandTimeout(300); // 5 minutes command timeout
-                mysqlOptions.EnableRetryOnFailure(
-                    maxRetryCount: 3,
-                    maxRetryDelay: TimeSpan.FromSeconds(10),
-                    errorNumbersToAdd: null);
+                mysqlOptions.CommandTimeout(60); // 1 minute command timeout
+                // Disable retry for debugging
+                // mysqlOptions.EnableRetryOnFailure();
             });
+            
+            Log.Information("MySQL configuration applied successfully");
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "Failed to configure MySQL, falling back to InMemory database");
+            Log.Error(ex, "Failed to configure MySQL, falling back to InMemory database");
             options.UseInMemoryDatabase("DocumentManagementDB");
         }
     }
     else
     {
-        Log.Warning("No connection string found, using InMemory database");
+        Log.Error("No connection string found, using InMemory database");
         // Fallback to InMemory for testing
         options.UseInMemoryDatabase("DocumentManagementDB");
     }
