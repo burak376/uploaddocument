@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users as UsersIcon, Plus, Edit, Trash2, User, Lock } from 'lucide-react';
+import { Users as UsersIcon, Plus, CreditCard as Edit, Trash2, User, Lock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
 import { userService } from '../services/userService';
