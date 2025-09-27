@@ -10,6 +10,7 @@
     "dev:both": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
     "start:both": "concurrently \"npm run dev:frontend\" \"cd DocumentManagementAPI && dotnet run\"",
     "build": "vite build",
+    "build:production": "npm install && npm run build",
     "build:netlify": "npm install && npm run build",
     "lint": "eslint .",
     "preview": "vite preview"

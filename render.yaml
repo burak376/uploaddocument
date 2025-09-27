@@ -1,23 +1,13 @@
 services:
   - type: web
-    name: uploaddocumentbe
-    env: docker
-    dockerfilePath: ./DocumentManagementAPI/Dockerfile
-    dockerContext: ./DocumentManagementAPI
-    plan: free
-    region: oregon
-    branch: main
-    healthCheckPath: /health
+    name: uploaddocument
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
-      - key: ASPNETCORE_ENVIRONMENT
-        value: Production
-      - key: ConnectionStrings__DefaultConnection
-        value: Server=sql7.freesqldatabase.com;Database=sql7800199;User=sql7800199;Password=xa3L1w7xpG;Port=3306;SslMode=None;
-      - key: JwtSettings__SecretKey
-        value: FreePlatform
-      - key: JwtSettings__Issuer
-        value: DocumentManagementAPI
-      - key: JwtSettings__Audience
-        value: DocumentManagementClient
-      - key: JwtSettings__ExpiryMinutes
-        value: 1440
+      - key: VITE_API_BASE_URL
+        value: https://uploaddocumentbe.onrender.com/api
