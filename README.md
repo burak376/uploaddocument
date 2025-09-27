@@ -114,3 +114,7 @@ docker-compose -f docker-compose.dev.yml up
 ```bash
 docker-compose -f docker-compose.prod.yml up
 ```
+
+## Deployment notes for SPA routing
+
+If you deploy the frontend as a static Single Page App (SPA) you must ensure unknown routes are rewritten to `index.html` so client-side routing (React Router) works. This repo includes `public/_redirects` for Netlify/Render and `render.yaml` uses `staticPublishPath: dist` for correct behavior on Render. Without these, direct navigation to routes like `/login` or `/dashboard` returns 404 from the static file server.

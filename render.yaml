@@ -1,9 +1,9 @@
 services:
-  - type: web
+  - type: static
     name: uploaddocument
-    env: node
+    env: static
     buildCommand: npm install && npm run build
-    startCommand: npx serve -s dist -l $PORT
+    staticPublishPath: dist
     envVars:
       - key: VITE_API_BASE_URL
         value: https://uploaddocumentbe.onrender.com/api
