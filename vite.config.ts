@@ -17,4 +17,6 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  // Ensure _redirects file is copied to dist
+  publicDir: 'public'
 });
