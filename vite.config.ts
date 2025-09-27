@@ -10,7 +10,10 @@ export default defineConfig({
         manualChunks: undefined,
       },
     },
+    outDir: 'dist',
+    assetsDir: 'assets',
   },
+  base: '/',
   optimizeDeps: {
     exclude: ['lucide-react'],
   },

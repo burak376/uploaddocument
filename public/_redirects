@@ -1,2 +1,13 @@
-# Netlify redirects for SPA routing
+# Netlify redirects (fallback)
 /*    /index.html   200
+
+# SPA routing - all routes should serve index.html
+/login    /index.html   200
+/dashboard    /index.html   200
+/upload    /index.html   200
+/my-documents    /index.html   200
+/companies    /index.html   200
+/users    /index.html   200
+/document-types    /index.html   200
+/search    /index.html   200
+/change-password    /index.html   200
