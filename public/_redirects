@@ -1,5 +1,2 @@
 # Netlify redirects for SPA routing
 /*    /index.html   200
-
-# API calls should go to backend
-/api/*  https://uploaddocumentbe.onrender.com/api/:splat  200
