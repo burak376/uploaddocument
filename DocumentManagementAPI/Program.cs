@@ -73,7 +73,8 @@ builder.Services.AddCors(options =>
             "https://dokumanyukleme.netlify.app",
             "https://uploaddocumentbe.onrender.com",
             "https://uploaddocument.onrender.com",
-             "https://takip.adenetim.com.tr"
+            "https://takip.adenetim.com.tr",
+            "https://api.adenetim.com.tr"
         )
               .AllowAnyHeader()
               .AllowAnyMethod()
