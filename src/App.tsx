@@ -1,171 +1,73 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { AppProvider } from './contexts/AppContext';
-import Layout from './components/Layout/Layout';
-import LoadingSpinner from './components/Common/LoadingSpinner';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Upload from './pages/Upload';
-import MyDocuments from './pages/MyDocuments';
-import Companies from './pages/Companies';
-import Users from './pages/Users';
-import DocumentTypes from './pages/DocumentTypes';
-import Search from './pages/Search';
-import ChangePassword from './pages/ChangePassword';
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { AuthProvider, useAuth } from './providers/AuthProvider'
+import { AppLayout } from './components/layout/AppLayout'
+import { LoginPage } from './pages/LoginPage'
+import { CompanySelectionPage } from './pages/CompanySelectionPage'
+import { TaskListPage } from './pages/TaskListPage'
+import { TaskCreatePage } from './pages/TaskCreatePage'
+import { TaskDetailPage } from './pages/TaskDetailPage'
+import { DocumentSetupPage } from './pages/DocumentSetupPage'
+import { UserManagementPage } from './pages/UserManagementPage'
+import { HistoryPage } from './pages/HistoryPage'
+import { ReportsPage } from './pages/ReportsPage'
+import { ReactNode } from 'react'
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner text="Yükleniyor..." />
-      </div>
-    );
-  }
-
+const RequireAuth = ({ children }: { children: ReactNode }) => {
+  const { isAuthenticated } = useAuth()
   if (!isAuthenticated) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />
   }
+  return <>{children}</>
+}
 
-  return <Layout>{children}</Layout>;
-};
-
-const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner text="Yükleniyor..." />
-      </div>
-    );
+const RequireCompany = ({ children }: { children: ReactNode }) => {
+  const { companyId } = useAuth()
+  if (!companyId) {
+    return <Navigate to="/company" replace />
   }
+  return <>{children}</>
+}
 
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" />;
-  }
-
-  return <>{children}</>;
-};
-
-const AppContent: React.FC = () => {
-  return (
-    <Router>
-      <Routes>
-        <Route 
-          path="/login" 
-          element={
-            <PublicRoute>
-              <Login />
-            </PublicRoute>
-          } 
-        />
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/upload" 
-          element={
-            <ProtectedRoute>
-              <Upload />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/my-documents" 
-          element={
-            <ProtectedRoute>
-              <MyDocuments />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/companies" 
-          element={
-            <ProtectedRoute>
-              <Companies />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/users" 
-          element={
-            <ProtectedRoute>
-              <Users />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/document-types" 
-          element={
-            <ProtectedRoute>
-              <DocumentTypes />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/search" 
-          element={
-            <ProtectedRoute>
-              <Search />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/change-password" 
-          element={
-            <ProtectedRoute>
-              <ChangePassword />
-            </ProtectedRoute>
-          } 
-        />
-        <Route path="/" element={<Navigate to="/dashboard" />} />
-        <Route path="*" element={<Navigate to="/dashboard" />} />
-      </Routes>
-    </Router>
-  );
-};
+const AppRoutes = () => (
+  <Routes>
+    <Route path="/login" element={<LoginPage />} />
+    <Route
+      path="/company"
+      element={
+        <RequireAuth>
+          <CompanySelectionPage />
+        </RequireAuth>
+      }
+    />
+    <Route
+      path="/"
+      element={
+        <RequireAuth>
+          <RequireCompany>
+            <AppLayout />
+          </RequireCompany>
+        </RequireAuth>
+      }
+    >
+      <Route index element={<Navigate to="tasks" replace />} />
+      <Route path="tasks" element={<TaskListPage />} />
+      <Route path="tasks/new" element={<TaskCreatePage />} />
+      <Route path="tasks/:taskId" element={<TaskDetailPage />} />
+      <Route path="document-setup" element={<DocumentSetupPage />} />
+      <Route path="admin/users" element={<UserManagementPage />} />
+      <Route path="history" element={<HistoryPage />} />
+      <Route path="reports" element={<ReportsPage />} />
+    </Route>
+    <Route path="*" element={<Navigate to="/" replace />} />
+  </Routes>
+)
 
 function App() {
   return (
     <AuthProvider>
-      <AppProvider>
-        <AppContent />
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 3000,
-            style: {
-              background: '#363636',
-              color: '#fff',
-            },
-            success: {
-              duration: 3000,
-              iconTheme: {
-                primary: '#4ade80',
-                secondary: '#fff',
-              },
-            },
-            error: {
-              duration: 4000,
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#fff',
-              },
-            },
-          }}
-        />
-      </AppProvider>
+      <AppRoutes />
     </AuthProvider>
-  );
+  )
 }
 
-export default App;
+export default App

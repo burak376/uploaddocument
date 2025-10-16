@@ -1,0 +1,47 @@
+version: '3.9'
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: src/DocumentTasking.Api/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://0.0.0.0:8080
+      - ConnectionStrings__Default=server=mysql;port=3306;database=document_tasking;user=root;password=Passw0rd!
+    ports:
+      - '8080:8080'
+    depends_on:
+      - mysql
+    volumes:
+      - ./backend/src/DocumentTasking.Api:/app
+    command: ["dotnet", "DocumentTasking.Api.dll"]
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    environment:
+      - VITE_API_URL=http://localhost:8080
+    ports:
+      - '5173:5173'
+    depends_on:
+      - api
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: Passw0rd!
+      MYSQL_DATABASE: document_tasking
+    ports:
+      - '3307:3306'
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+
+volumes:
+  mysql-data:
