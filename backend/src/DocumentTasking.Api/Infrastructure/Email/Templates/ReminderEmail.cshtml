@@ -1,0 +1,22 @@
+@model DocumentTasking.Api.Infrastructure.Email.ReminderEmailModel
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <title>Görev Hatırlatıcısı</title>
+</head>
+<body>
+    <p>Merhaba @Model.AssigneeName,</p>
+    <p>@Model.CompanyName firmasındaki <strong>@Model.TaskTitle</strong> görevine ait belgeler eksik görünüyor.</p>
+    <p>Termin tarihi (şirket TZ: @Model.CompanyTimeZoneId): <strong>@Model.DueDateLocal</strong></p>
+    <p>Eksik belgeler:</p>
+    <ul>
+        @foreach (var document in Model.MissingDocuments)
+        {
+            <li>@document</li>
+        }
+    </ul>
+    <p>Görev detaylarına gitmek için <a href="@Model.TaskUrl">buraya tıklayın</a>.</p>
+    <p>Teşekkürler,<br/>Belge & Görev Takip Sistemi</p>
+</body>
+</html>
